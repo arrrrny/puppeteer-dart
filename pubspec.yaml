@@ -23,7 +23,7 @@ dependencies:
   http: '>=0.13.0 <2.0.0'
   logging: ^1.0.0
   path: ^1.8.0
-  petitparser: ^7.0.0
+  petitparser: ^7.0.2
   pool: ^1.5.0
   web: ^1.1.0
 

@@ -5,7 +5,7 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
-const _lastVersion = '149.0.7827.22';
+const _lastVersion = '145.0.7632.109.2';
 
 class DownloadedBrowserInfo {
   final String executablePath;
@@ -116,7 +116,7 @@ Future<DownloadedBrowserInfo> downloadChrome({
       final url = _downloadUrl(platformLocal, version!);
       final zipPath = p.join(partialDir, p.url.basename(url));
       await _downloadFile(url, zipPath, onDownloadProgress);
-      _unzip(zipPath, partialDir);
+      _extractArchive(zipPath, partialDir);
       File(zipPath).deleteSync();
 
       final exePath = p.join(partialDir, getExecutablePath(platformLocal));
@@ -346,18 +346,30 @@ Future<void> _downloadFile(
   }
 }
 
-void _unzip(String path, String targetPath) {
-  if (!Platform.isWindows) {
-    // The _simpleUnzip doesn't support symlinks so we prefer a native command
-    Process.runSync('unzip', [path, '-d', targetPath]);
-  } else {
-    try {
-      var result = Process.runSync('tar', ['-xf', path, '-C', targetPath]);
+void _extractArchive(String path, String targetPath) {
+  if (path.endsWith('.tar.gz')) {
+    // CloakBrowser archives are tar.gz
+    if (!Platform.isWindows) {
+      var result = Process.runSync('tar', ['-xzf', path, '-C', targetPath]);
       if (result.exitCode != 0) {
-        throw Exception('Failed to unzip chrome binaries:\n${result.stderr}');
+        throw Exception('Failed to extract archive:\n${result.stderr}');
       }
-    } on ProcessException {
+    } else {
       _simpleUnzip(path, targetPath);
+    }
+  } else {
+    // Standard .zip archive
+    if (!Platform.isWindows) {
+      Process.runSync('unzip', [path, '-d', targetPath]);
+    } else {
+      try {
+        var result = Process.runSync('tar', ['-xf', path, '-C', targetPath]);
+        if (result.exitCode != 0) {
+          throw Exception('Failed to unzip:\n${result.stderr}');
+        }
+      } on ProcessException {
+        _simpleUnzip(path, targetPath);
+      }
     }
   }
 }
@@ -384,24 +396,35 @@ void _simpleUnzip(String path, String targetPath) {
   }
 }
 
-const _baseUrl = 'https://storage.googleapis.com/chrome-for-testing-public';
+const _baseUrl =
+    'https://github.com/CloakHQ/CloakBrowser/releases/download';
 
 String _downloadUrl(BrowserPlatform platform, String version) {
-  return '$_baseUrl/$version/${platform.folder}/chrome-${platform.folder}.zip';
+  final archive = _cloakArchiveName(platform);
+  return '$_baseUrl/chromium-v$version/$archive';
+}
+
+String _cloakArchiveName(BrowserPlatform platform) {
+  return switch (platform) {
+    BrowserPlatform.macArm64 => 'cloakbrowser-darwin-arm64.tar.gz',
+    BrowserPlatform.macX64 => 'cloakbrowser-darwin-x64.tar.gz',
+    BrowserPlatform.linux64 => 'cloakbrowser-linux-x64.tar.gz',
+    BrowserPlatform.windows32 || BrowserPlatform.windows64 =>
+      'cloakbrowser-windows-x64.zip',
+  };
 }
 
 String getExecutablePath(BrowserPlatform platform) {
   return switch (platform) {
     BrowserPlatform.macArm64 || BrowserPlatform.macX64 => p.join(
-      'chrome-${platform.folder}',
-      'Google Chrome for Testing.app',
+      'Chromium.app',
       'Contents',
       'MacOS',
-      'Google Chrome for Testing',
+      'Chromium',
     ),
-    BrowserPlatform.linux64 => p.join('chrome-${platform.folder}', 'chrome'),
+    BrowserPlatform.linux64 => p.join('chrome-linux64', 'chrome'),
     BrowserPlatform.windows32 || BrowserPlatform.windows64 => p.join(
-      'chrome-${platform.folder}',
+      'chrome-win64',
       'chrome.exe',
     ),
   };
