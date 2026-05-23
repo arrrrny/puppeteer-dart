@@ -5,7 +5,19 @@ import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 
-const _lastVersion = '145.0.7632.109.2';
+// Per-platform latest CloakBrowser versions.
+// macOS remains on 145 while Linux/Windows are on 146.
+const _versions = {
+  'macArm64': '145.0.7632.109.2',
+  'macX64': '145.0.7632.109.2',
+  'linux64': '146.0.7680.177.5',
+  'windows64': '146.0.7680.177.5',
+  'windows32': '146.0.7680.177.5',
+};
+
+String _lastVersion(BrowserPlatform platform) {
+  return _versions[platform.name] ?? '146.0.7680.177.5';
+}
 
 class DownloadedBrowserInfo {
   final String executablePath;
@@ -103,9 +115,9 @@ Future<DownloadedBrowserInfo> downloadChrome({
   void Function(int received, int total)? onDownloadProgress,
   BrowserPlatform? platform,
 }) async {
-  version ??= _lastVersion;
-  cachePath ??= defaultBrowserCachePath();
   platform ??= BrowserPlatform.current;
+  version ??= _lastVersion(platform);
+  cachePath ??= defaultBrowserCachePath();
 
   final platformLocal = platform;
   return ensureBrowserDownloaded(
