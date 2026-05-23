@@ -128,14 +128,14 @@ void main() {
       final startingContext = browser.browserContexts.length;
       var context = await browser.createIncognitoBrowserContext();
       var page = await context.newPage();
-      await page.devTools.network.emulateNetworkConditionsByRule(false, [
+      await page.devTools.network.emulateNetworkConditionsByRule([
         NetworkConditions(
           urlPattern: '',
           latency: 1000,
           downloadThroughput: 1000000,
           uploadThroughput: 1000000,
         ),
-      ]);
+      ], offline: false);
       await page.goto('https://www.naver.com');
       await page.goto('https://www.naver.com');
       await context.close();
