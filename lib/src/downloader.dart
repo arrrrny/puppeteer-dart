@@ -434,7 +434,7 @@ String getExecutablePath(BrowserPlatform platform) {
       'MacOS',
       'Chromium',
     ),
-    BrowserPlatform.linux64 => p.join('chrome-linux64', 'chrome'),
+    BrowserPlatform.linux64 => 'chrome',
     BrowserPlatform.windows32 || BrowserPlatform.windows64 => p.join(
       'chrome-win64',
       'chrome.exe',
