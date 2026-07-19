@@ -4074,10 +4074,6 @@ enum CookieBlockedReason {
 enum CookieExemptionReason {
   none('None'),
   userSetting('UserSetting'),
-  tpcdMetadata('TPCDMetadata'),
-  tpcdDeprecationTrial('TPCDDeprecationTrial'),
-  topLevelTpcdDeprecationTrial('TopLevelTPCDDeprecationTrial'),
-  tpcdHeuristics('TPCDHeuristics'),
   enterprisePolicy('EnterprisePolicy'),
   storageAccess('StorageAccess'),
   topLevelStorageAccess('TopLevelStorageAccess'),
@@ -5992,7 +5988,10 @@ enum DeviceBoundSessionFetchResult {
     'InvalidFederatedSessionProviderFailedToRestoreKey',
   ),
   failedToUnwrapKey('FailedToUnwrapKey'),
-  sessionDeletedDuringRefresh('SessionDeletedDuringRefresh');
+  sessionDeletedDuringRefresh('SessionDeletedDuringRefresh'),
+  crossOriginRegistrationSiteNotIncluded(
+    'CrossOriginRegistrationSiteNotIncluded',
+  );
 
   final String value;
 

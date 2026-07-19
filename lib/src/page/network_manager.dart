@@ -96,6 +96,7 @@ class NetworkManager {
           latency: 0,
           downloadThroughput: -1,
           uploadThroughput: -1,
+          offline: _offline,
         ),
       ], offline: _offline),
       // emulateNetworkConditionsByRule does not affect navigator.onLine;

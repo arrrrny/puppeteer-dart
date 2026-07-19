@@ -1,3 +1,34 @@
+## 3.25.1
+- Complete WASM compatibility: route `dart:isolate` through the same shim.
+
+## 3.25.0
+- The package is now WASM-compatible, so `web` keeps full marks for platform
+  support. `puppeteer.connect()` and page interaction over the DevTools
+  websocket can be compiled to WebAssembly (`dart compile wasm`). Internally,
+  `dart:io` is now reached through a conditional shim that re-exports the real
+  `dart:io` on native platforms (so the public API is unchanged there) and a
+  stub on web/WASM. On web/WASM, `puppeteer.launch()`, `downloadChrome` and the
+  `File`/`IOSink` convenience overloads throw `UnsupportedError` — only
+  `connect()` and CDP-based page interaction are supported.
+
+## 3.24.1
+- Fix `downloadChrome` on Windows: download coordination is now keyed per
+  platform, so fetching multiple platforms of the same Chrome version (e.g.
+  `windows32` and `windows64`) no longer collides on the `.downloading` rename.
+
+## 3.24.0
+- Add the Locator API (`page.locator()` / `frame.locator()`): auto-waits for the
+  element and retries the whole action on failure. Includes `map`/`filter`/
+  `Locator.race`, `ElementHandle.asLocator()` and `page.locatorFunction()`.
+- Add Puppeteer-specific selectors anywhere a selector is accepted:
+  `::-p-text(...)`, `::-p-xpath(...)`, deep combinators `>>>`/`>>>>` (pierce
+  shadow DOM) and the `text/`/`xpath/`/`pierce/` prefixes. (`::-p-aria` not yet.)
+- `waitForFunction` now awaits asynchronous (`Promise`-returning) predicates.
+
+```dart
+await page.locator('::-p-text(Sign in)').click();
+```
+
 ## 3.23.0
 - Update to Chrome 148.0.7778.97.
 - `downloadChrome` is now safe to call concurrently across isolates and

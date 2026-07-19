@@ -622,6 +622,9 @@ enum PrefetchStatus {
   prefetchIneligibleRetryAfter('PrefetchIneligibleRetryAfter'),
   prefetchIsPrivacyDecoy('PrefetchIsPrivacyDecoy'),
   prefetchIsStale('PrefetchIsStale'),
+  prefetchNotEligibleBlockedByConnectionAllowlist(
+    'PrefetchNotEligibleBlockedByConnectionAllowlist',
+  ),
   prefetchNotEligibleBrowserContextOffTheRecord(
     'PrefetchNotEligibleBrowserContextOffTheRecord',
   ),
@@ -660,7 +663,8 @@ enum PrefetchStatus {
   prefetchProxyNotAvailable('PrefetchProxyNotAvailable'),
   prefetchResponseUsed('PrefetchResponseUsed'),
   prefetchSuccessfulButNotUsed('PrefetchSuccessfulButNotUsed'),
-  prefetchNotUsedProbeFailed('PrefetchNotUsedProbeFailed');
+  prefetchNotUsedProbeFailed('PrefetchNotUsedProbeFailed'),
+  prefetchCancelledOnUserNavigation('PrefetchCancelledOnUserNavigation');
 
   final String value;
 

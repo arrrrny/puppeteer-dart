@@ -169,13 +169,11 @@ class TargetApi {
   /// [hidden] Whether to create a hidden target. The hidden target is observable via protocol, but not
   /// present in the tab UI strip. Cannot be created with `forTab: true`, `newWindow: true` or
   /// `background: false`. The life-time of the tab is limited to the life-time of the session.
-  /// [focus] If specified, the option is used to determine if the new target should
-  /// be focused or not. By default, the focus behavior depends on the
-  /// value of the background field. For example, background=false and focus=false
-  /// will result in the target tab being opened but the browser window remain
-  /// unchanged (if it was in the background, it will remain in the background)
-  /// and background=false with focus=undefined will result in the window being focused.
-  /// Using background: true and focus: true is not supported and will result in an error.
+  /// [focus] If specified, determines whether the new target should be focused.
+  /// By default, the focus behavior depends on the `background` parameter:
+  /// - If `background` is false (default) and `focus` is omitted, the new target is focused and the browser window is brought to the foreground.
+  /// - If `background` is false and `focus` is false, the target is opened but the browser window's focus remains unchanged (e.g., if the window was in the background, it stays there).
+  /// - If `background` is true, setting `focus` to true is not supported and will result in an error.
   /// Returns: The id of the page opened.
   Future<TargetID> createTarget(
     String url, {
@@ -356,8 +354,8 @@ class TargetApi {
   /// Opens a DevTools window for the target.
   /// [targetId] This can be the page or tab target ID.
   /// [panelId] The id of the panel we want DevTools to open initially. Currently
-  /// supported panels are elements, console, network, sources, resources
-  /// and performance.
+  /// supported panels are elements, console, network, sources, resources,
+  /// timeline, chrome-recorder, heap-profiler, lighthouse, and security.
   /// Returns: The targetId of DevTools page target.
   Future<TargetID> openDevTools(TargetID targetId, {String? panelId}) async {
     var result = await _client.send('Target.openDevTools', {
@@ -523,6 +521,10 @@ class TargetInfo {
   /// the type of "page", this may be set to "prerender".
   final String? subtype;
 
+  /// Embedder-specific target metadata. This is only set for targets of
+  /// type "tab".
+  final Map<String, dynamic>? embedderData;
+
   TargetInfo({
     required this.targetId,
     required this.type,
@@ -536,6 +538,7 @@ class TargetInfo {
     this.parentFrameId,
     this.browserContextId,
     this.subtype,
+    this.embedderData,
   });
 
   factory TargetInfo.fromJson(Map<String, dynamic> json) {
@@ -564,6 +567,9 @@ class TargetInfo {
             )
           : null,
       subtype: json.containsKey('subtype') ? json['subtype'] as String : null,
+      embedderData: json.containsKey('embedderData')
+          ? json['embedderData'] as Map<String, dynamic>
+          : null,
     );
   }
 
@@ -582,6 +588,7 @@ class TargetInfo {
       if (browserContextId != null)
         'browserContextId': browserContextId!.toJson(),
       if (subtype != null) 'subtype': subtype,
+      if (embedderData != null) 'embedderData': embedderData,
     };
   }
 }
