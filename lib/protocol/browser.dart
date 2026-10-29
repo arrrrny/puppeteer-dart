@@ -37,9 +37,9 @@ class BrowserApi {
     await _client.send('Browser.setPermission', {
       'permission': permission,
       'setting': setting,
-      if (origin != null) 'origin': origin,
-      if (embeddedOrigin != null) 'embeddedOrigin': embeddedOrigin,
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'origin': ?origin,
+      'embeddedOrigin': ?embeddedOrigin,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -55,8 +55,8 @@ class BrowserApi {
   }) async {
     await _client.send('Browser.grantPermissions', {
       'permissions': [...permissions],
-      if (origin != null) 'origin': origin,
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'origin': ?origin,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -64,7 +64,7 @@ class BrowserApi {
   /// [browserContextId] BrowserContext to reset permissions. When omitted, default browser context is used.
   Future<void> resetPermissions({BrowserContextID? browserContextId}) async {
     await _client.send('Browser.resetPermissions', {
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -87,9 +87,9 @@ class BrowserApi {
     );
     await _client.send('Browser.setDownloadBehavior', {
       'behavior': behavior,
-      if (browserContextId != null) 'browserContextId': browserContextId,
-      if (downloadPath != null) 'downloadPath': downloadPath,
-      if (eventsEnabled != null) 'eventsEnabled': eventsEnabled,
+      'browserContextId': ?browserContextId,
+      'downloadPath': ?downloadPath,
+      'eventsEnabled': ?eventsEnabled,
     });
   }
 
@@ -102,7 +102,7 @@ class BrowserApi {
   }) async {
     await _client.send('Browser.cancelDownload', {
       'guid': guid,
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -135,6 +135,16 @@ class BrowserApi {
     return (result['arguments'] as List).map((e) => e as String).toList();
   }
 
+  /// Adds or updates a mock camera in the shared video capture device list for
+  /// test automation. The mock camera is not scoped to a particular page or
+  /// frame and is removed when the DevTools session that created it disconnects.
+  /// [deviceId] Required non-empty identifier for the mock camera. This is mapped to an
+  /// internal virtual-device identifier and is not the MediaDeviceInfo.deviceId
+  /// exposed to the page.
+  Future<void> addMockCamera(String deviceId) async {
+    await _client.send('Browser.addMockCamera', {'deviceId': deviceId});
+  }
+
   /// Get Chrome histograms.
   /// [query] Requested substring in name. Only histograms which have query as a
   /// substring in their name are extracted. An empty or absent query returns
@@ -143,8 +153,8 @@ class BrowserApi {
   /// Returns: Histograms.
   Future<List<Histogram>> getHistograms({String? query, bool? delta}) async {
     var result = await _client.send('Browser.getHistograms', {
-      if (query != null) 'query': query,
-      if (delta != null) 'delta': delta,
+      'query': ?query,
+      'delta': ?delta,
     });
     return (result['histograms'] as List)
         .map((e) => Histogram.fromJson(e as Map<String, dynamic>))
@@ -158,7 +168,7 @@ class BrowserApi {
   Future<Histogram> getHistogram(String name, {bool? delta}) async {
     var result = await _client.send('Browser.getHistogram', {
       'name': name,
-      if (delta != null) 'delta': delta,
+      'delta': ?delta,
     });
     return Histogram.fromJson(result['histogram'] as Map<String, dynamic>);
   }
@@ -180,7 +190,7 @@ class BrowserApi {
     target.TargetID? targetId,
   }) async {
     var result = await _client.send('Browser.getWindowForTarget', {
-      if (targetId != null) 'targetId': targetId,
+      'targetId': ?targetId,
     });
     return GetWindowForTargetResult.fromJson(result);
   }
@@ -209,8 +219,8 @@ class BrowserApi {
   }) async {
     await _client.send('Browser.setContentsSize', {
       'windowId': windowId,
-      if (width != null) 'width': width,
-      if (height != null) 'height': height,
+      'width': ?width,
+      'height': ?height,
     });
   }
 
@@ -218,8 +228,8 @@ class BrowserApi {
   /// [image] Png encoded image.
   Future<void> setDockTile({String? badgeLabel, String? image}) async {
     await _client.send('Browser.setDockTile', {
-      if (badgeLabel != null) 'badgeLabel': badgeLabel,
-      if (image != null) 'image': image,
+      'badgeLabel': ?badgeLabel,
+      'image': ?image,
     });
   }
 
@@ -238,24 +248,20 @@ class BrowserApi {
     });
   }
 
-  /// Configures encryption keys used with a given privacy sandbox API to talk
-  /// to a trusted coordinator.  Since this is intended for test automation only,
-  /// coordinatorOrigin must be a .test domain. No existing coordinator
-  /// configuration for the origin may exist.
-  /// [browserContextId] BrowserContext to perform the action in. When omitted, default browser
-  /// context is used.
-  Future<void> addPrivacySandboxCoordinatorKeyConfig(
-    PrivacySandboxAPI api,
-    String coordinatorOrigin,
-    String keyConfig, {
-    BrowserContextID? browserContextId,
-  }) async {
-    await _client.send('Browser.addPrivacySandboxCoordinatorKeyConfig', {
-      'api': api,
-      'coordinatorOrigin': coordinatorOrigin,
-      'keyConfig': keyConfig,
-      if (browserContextId != null) 'browserContextId': browserContextId,
+  /// Gets the current globally-applied privacy control status
+  /// See https://www.w3.org/TR/gpc/#get-global-privacy-control
+  Future<bool> getGlobalPrivacyControl() async {
+    var result = await _client.send('Browser.getGlobalPrivacyControl');
+    return result['gpc'] as bool;
+  }
+
+  /// Sets and then gets the current globally-applied privacy control status
+  /// See https://www.w3.org/TR/gpc/#set-global-privacy-control
+  Future<bool> setGlobalPrivacyControl(bool gpc) async {
+    var result = await _client.send('Browser.setGlobalPrivacyControl', {
+      'gpc': gpc,
     });
+    return result['gpc'] as bool;
   }
 }
 
@@ -677,23 +683,6 @@ class Histogram {
       'buckets': buckets.map((e) => e.toJson()).toList(),
     };
   }
-}
-
-enum PrivacySandboxAPI {
-  biddingAndAuctionServices('BiddingAndAuctionServices'),
-  trustedKeyValue('TrustedKeyValue');
-
-  final String value;
-
-  const PrivacySandboxAPI(this.value);
-
-  factory PrivacySandboxAPI.fromJson(String value) =>
-      PrivacySandboxAPI.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
 }
 
 enum DownloadProgressEventState {

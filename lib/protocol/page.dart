@@ -219,10 +219,9 @@ class PageApi {
   }) async {
     var result = await _client.send('Page.addScriptToEvaluateOnNewDocument', {
       'source': source,
-      if (worldName != null) 'worldName': worldName,
-      if (includeCommandLineAPI != null)
-        'includeCommandLineAPI': includeCommandLineAPI,
-      if (runImmediately != null) 'runImmediately': runImmediately,
+      'worldName': ?worldName,
+      'includeCommandLineAPI': ?includeCommandLineAPI,
+      'runImmediately': ?runImmediately,
     });
     return ScriptIdentifier.fromJson(result['identifier'] as String);
   }
@@ -250,13 +249,12 @@ class PageApi {
   }) async {
     assert(format == null || const ['jpeg', 'png', 'webp'].contains(format));
     var result = await _client.send('Page.captureScreenshot', {
-      if (format != null) 'format': format,
-      if (quality != null) 'quality': quality,
-      if (clip != null) 'clip': clip,
-      if (fromSurface != null) 'fromSurface': fromSurface,
-      if (captureBeyondViewport != null)
-        'captureBeyondViewport': captureBeyondViewport,
-      if (optimizeForSpeed != null) 'optimizeForSpeed': optimizeForSpeed,
+      'format': ?format,
+      'quality': ?quality,
+      'clip': ?clip,
+      'fromSurface': ?fromSurface,
+      'captureBeyondViewport': ?captureBeyondViewport,
+      'optimizeForSpeed': ?optimizeForSpeed,
     });
     return result['data'] as String;
   }
@@ -268,7 +266,7 @@ class PageApi {
   Future<String> captureSnapshot({@Enum(['mhtml']) String? format}) async {
     assert(format == null || const ['mhtml'].contains(format));
     var result = await _client.send('Page.captureSnapshot', {
-      if (format != null) 'format': format,
+      'format': ?format,
     });
     return result['data'] as String;
   }
@@ -296,17 +294,24 @@ class PageApi {
   /// [worldName] An optional name which is reported in the Execution Context.
   /// [grantUniveralAccess] Whether or not universal access should be granted to the isolated world. This is a powerful
   /// option, use with caution.
+  /// [contentSecurityPolicy] An optional content security policy to set for the isolated world.
+  /// If omitted, any existing CSP for the world will be cleared.
+  /// Note that clearing or updating the CSP does not immediately affect the active
+  /// context in the same document because LocalDOMWindow caches the
+  /// ContentSecurityPolicy object. The change takes effect on subsequent
+  /// navigations when a new window context is created.
   /// Returns: Execution context of the isolated world.
   Future<runtime.ExecutionContextId> createIsolatedWorld(
     FrameId frameId, {
     String? worldName,
     bool? grantUniveralAccess,
+    String? contentSecurityPolicy,
   }) async {
     var result = await _client.send('Page.createIsolatedWorld', {
       'frameId': frameId,
-      if (worldName != null) 'worldName': worldName,
-      if (grantUniveralAccess != null)
-        'grantUniveralAccess': grantUniveralAccess,
+      'worldName': ?worldName,
+      'grantUniveralAccess': ?grantUniveralAccess,
+      'contentSecurityPolicy': ?contentSecurityPolicy,
     });
     return runtime.ExecutionContextId.fromJson(
       result['executionContextId'] as int,
@@ -334,8 +339,7 @@ class PageApi {
   /// `Page.setInterceptFileChooserDialog` command (default: false).
   Future<void> enable({bool? enableFileChooserOpenedEvent}) async {
     await _client.send('Page.enable', {
-      if (enableFileChooserOpenedEvent != null)
-        'enableFileChooserOpenedEvent': enableFileChooserOpenedEvent,
+      'enableFileChooserOpenedEvent': ?enableFileChooserOpenedEvent,
     });
   }
 
@@ -346,7 +350,7 @@ class PageApi {
   ///   If there is not a loaded page, this API errors out immediately.
   Future<GetAppManifestResult> getAppManifest({String? manifestId}) async {
     var result = await _client.send('Page.getAppManifest', {
-      if (manifestId != null) 'manifestId': manifestId,
+      'manifestId': ?manifestId,
     });
     return GetAppManifestResult.fromJson(result);
   }
@@ -365,11 +369,27 @@ class PageApi {
     return result['primaryIcon'] as String;
   }
 
-  /// Returns the unique (PWA) app id.
+  /// Returns the unique (PWA) app id, along with IWA bundle ID and parent app info.
   /// Only returns values if the feature flag 'WebAppEnableManifestId' is enabled
   Future<GetAppIdResult> getAppId() async {
     var result = await _client.send('Page.getAppId');
     return GetAppIdResult.fromJson(result);
+  }
+
+  /// Returns the list of installed child Sub-Apps for the inspected parent app.
+  Future<List<SubApp>> getSubApps() async {
+    var result = await _client.send('Page.getSubApps');
+    return (result['subApps'] as List)
+        .map((e) => SubApp.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  /// Returns the list of sibling Sub-Apps sharing the same parent app if the inspected context is a Sub-App.
+  Future<List<SubApp>> getSiblingSubApps() async {
+    var result = await _client.send('Page.getSiblingSubApps');
+    return (result['subApps'] as List)
+        .map((e) => SubApp.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// Returns: The ancestry chain of ad script identifiers leading to this frame's
@@ -440,7 +460,7 @@ class PageApi {
   Future<void> handleJavaScriptDialog(bool accept, {String? promptText}) async {
     await _client.send('Page.handleJavaScriptDialog', {
       'accept': accept,
-      if (promptText != null) 'promptText': promptText,
+      'promptText': ?promptText,
     });
   }
 
@@ -459,10 +479,10 @@ class PageApi {
   }) async {
     var result = await _client.send('Page.navigate', {
       'url': url,
-      if (referrer != null) 'referrer': referrer,
-      if (transitionType != null) 'transitionType': transitionType,
-      if (frameId != null) 'frameId': frameId,
-      if (referrerPolicy != null) 'referrerPolicy': referrerPolicy,
+      'referrer': ?referrer,
+      'transitionType': ?transitionType,
+      'frameId': ?frameId,
+      'referrerPolicy': ?referrerPolicy,
     });
     return NavigateResult.fromJson(result);
   }
@@ -531,25 +551,23 @@ class PageApi {
           const ['ReturnAsBase64', 'ReturnAsStream'].contains(transferMode),
     );
     var result = await _client.send('Page.printToPDF', {
-      if (landscape != null) 'landscape': landscape,
-      if (displayHeaderFooter != null)
-        'displayHeaderFooter': displayHeaderFooter,
-      if (printBackground != null) 'printBackground': printBackground,
-      if (scale != null) 'scale': scale,
-      if (paperWidth != null) 'paperWidth': paperWidth,
-      if (paperHeight != null) 'paperHeight': paperHeight,
-      if (marginTop != null) 'marginTop': marginTop,
-      if (marginBottom != null) 'marginBottom': marginBottom,
-      if (marginLeft != null) 'marginLeft': marginLeft,
-      if (marginRight != null) 'marginRight': marginRight,
-      if (pageRanges != null) 'pageRanges': pageRanges,
-      if (headerTemplate != null) 'headerTemplate': headerTemplate,
-      if (footerTemplate != null) 'footerTemplate': footerTemplate,
-      if (preferCSSPageSize != null) 'preferCSSPageSize': preferCSSPageSize,
-      if (transferMode != null) 'transferMode': transferMode,
-      if (generateTaggedPDF != null) 'generateTaggedPDF': generateTaggedPDF,
-      if (generateDocumentOutline != null)
-        'generateDocumentOutline': generateDocumentOutline,
+      'landscape': ?landscape,
+      'displayHeaderFooter': ?displayHeaderFooter,
+      'printBackground': ?printBackground,
+      'scale': ?scale,
+      'paperWidth': ?paperWidth,
+      'paperHeight': ?paperHeight,
+      'marginTop': ?marginTop,
+      'marginBottom': ?marginBottom,
+      'marginLeft': ?marginLeft,
+      'marginRight': ?marginRight,
+      'pageRanges': ?pageRanges,
+      'headerTemplate': ?headerTemplate,
+      'footerTemplate': ?footerTemplate,
+      'preferCSSPageSize': ?preferCSSPageSize,
+      'transferMode': ?transferMode,
+      'generateTaggedPDF': ?generateTaggedPDF,
+      'generateDocumentOutline': ?generateDocumentOutline,
     });
     return PrintToPDFResult.fromJson(result);
   }
@@ -567,10 +585,9 @@ class PageApi {
     network.LoaderId? loaderId,
   }) async {
     await _client.send('Page.reload', {
-      if (ignoreCache != null) 'ignoreCache': ignoreCache,
-      if (scriptToEvaluateOnLoad != null)
-        'scriptToEvaluateOnLoad': scriptToEvaluateOnLoad,
-      if (loaderId != null) 'loaderId': loaderId,
+      'ignoreCache': ?ignoreCache,
+      'scriptToEvaluateOnLoad': ?scriptToEvaluateOnLoad,
+      'loaderId': ?loaderId,
     });
   }
 
@@ -615,8 +632,8 @@ class PageApi {
       'frameId': frameId,
       'url': url,
       'query': query,
-      if (caseSensitive != null) 'caseSensitive': caseSensitive,
-      if (isRegex != null) 'isRegex': isRegex,
+      'caseSensitive': ?caseSensitive,
+      'isRegex': ?isRegex,
     });
     return (result['result'] as List)
         .map((e) => debugger.SearchMatch.fromJson(e as Map<String, dynamic>))
@@ -696,14 +713,14 @@ class PageApi {
       'height': height,
       'deviceScaleFactor': deviceScaleFactor,
       'mobile': mobile,
-      if (scale != null) 'scale': scale,
-      if (screenWidth != null) 'screenWidth': screenWidth,
-      if (screenHeight != null) 'screenHeight': screenHeight,
-      if (positionX != null) 'positionX': positionX,
-      if (positionY != null) 'positionY': positionY,
-      if (dontSetVisibleSize != null) 'dontSetVisibleSize': dontSetVisibleSize,
-      if (screenOrientation != null) 'screenOrientation': screenOrientation,
-      if (viewport != null) 'viewport': viewport,
+      'scale': ?scale,
+      'screenWidth': ?screenWidth,
+      'screenHeight': ?screenHeight,
+      'positionX': ?positionX,
+      'positionY': ?positionY,
+      'dontSetVisibleSize': ?dontSetVisibleSize,
+      'screenOrientation': ?screenOrientation,
+      'viewport': ?viewport,
     });
   }
 
@@ -765,7 +782,7 @@ class PageApi {
     assert(const ['deny', 'allow', 'default'].contains(behavior));
     await _client.send('Page.setDownloadBehavior', {
       'behavior': behavior,
-      if (downloadPath != null) 'downloadPath': downloadPath,
+      'downloadPath': ?downloadPath,
     });
   }
 
@@ -781,9 +798,9 @@ class PageApi {
     num? accuracy,
   }) async {
     await _client.send('Page.setGeolocationOverride', {
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
-      if (accuracy != null) 'accuracy': accuracy,
+      'latitude': ?latitude,
+      'longitude': ?longitude,
+      'accuracy': ?accuracy,
     });
   }
 
@@ -807,7 +824,7 @@ class PageApi {
     );
     await _client.send('Page.setTouchEmulationEnabled', {
       'enabled': enabled,
-      if (configuration != null) 'configuration': configuration,
+      'configuration': ?configuration,
     });
   }
 
@@ -816,22 +833,59 @@ class PageApi {
   /// [quality] Compression quality from range [0..100].
   /// [maxWidth] Maximum screenshot width.
   /// [maxHeight] Maximum screenshot height.
-  /// [everyNthFrame] Send every n-th frame.
+  /// [everyNthFrame] Send every n-th frame. Must be a positive integer.
+  /// [maxFramesInFlight] Maximum number of frames sent until screencastFrameAck is required.
+  /// Defaults to 3. Must be a positive integer.
+  /// [sendLastFrame] By default, after screencastFrameAck arrives, the next produced frame is sent.
+  /// Passing this flag enables storing the last produced frame in memory, which is
+  /// immediately sent upon screencastFrameAck. This way, overall performance is
+  /// traded for a better latency.
   Future<void> startScreencast({
     @Enum(['jpeg', 'png']) String? format,
     int? quality,
     int? maxWidth,
     int? maxHeight,
     int? everyNthFrame,
+    int? maxFramesInFlight,
+    bool? sendLastFrame,
   }) async {
     assert(format == null || const ['jpeg', 'png'].contains(format));
     await _client.send('Page.startScreencast', {
-      if (format != null) 'format': format,
-      if (quality != null) 'quality': quality,
-      if (maxWidth != null) 'maxWidth': maxWidth,
-      if (maxHeight != null) 'maxHeight': maxHeight,
-      if (everyNthFrame != null) 'everyNthFrame': everyNthFrame,
+      'format': ?format,
+      'quality': ?quality,
+      'maxWidth': ?maxWidth,
+      'maxHeight': ?maxHeight,
+      'everyNthFrame': ?everyNthFrame,
+      'maxFramesInFlight': ?maxFramesInFlight,
+      'sendLastFrame': ?sendLastFrame,
     });
+  }
+
+  /// Starts screencast video recording.
+  /// [maxWidth] Maximum frame width in pixels.
+  /// [maxHeight] Maximum frame height in pixels.
+  /// [frameRate] Maximum frame rate in frames per second.
+  /// Returns: A handle of the stream that holds resulting screencast data.
+  Future<io.StreamHandle> startScreenRecording({
+    bool? audio,
+    int? maxWidth,
+    int? maxHeight,
+    int? frameRate,
+  }) async {
+    var result = await _client.send('Page.startScreenRecording', {
+      'audio': ?audio,
+      'maxWidth': ?maxWidth,
+      'maxHeight': ?maxHeight,
+      'frameRate': ?frameRate,
+    });
+    return io.StreamHandle.fromJson(result['stream'] as String);
+  }
+
+  /// Stops screencast video recording.
+  /// Returns: A handle of the stream that holds resulting screencast data.
+  Future<io.StreamHandle> stopScreenRecording() async {
+    var result = await _client.send('Page.stopScreenRecording');
+    return io.StreamHandle.fromJson(result['stream'] as String);
   }
 
   /// Force the page stop all navigations and pending resource fetches.
@@ -930,7 +984,7 @@ class PageApi {
   Future<void> generateTestReport(String message, {String? group}) async {
     await _client.send('Page.generateTestReport', {
       'message': message,
-      if (group != null) 'group': group,
+      'group': ?group,
     });
   }
 
@@ -951,7 +1005,7 @@ class PageApi {
   }) async {
     await _client.send('Page.setInterceptFileChooserDialog', {
       'enabled': enabled,
-      if (cancel != null) 'cancel': cancel,
+      'cancel': ?cancel,
     });
   }
 
@@ -976,8 +1030,7 @@ class PageApi {
     bool? includeActionableInformation,
   }) async {
     var result = await _client.send('Page.getAnnotatedPageContent', {
-      if (includeActionableInformation != null)
-        'includeActionableInformation': includeActionableInformation,
+      'includeActionableInformation': ?includeActionableInformation,
     });
     return result['content'] as String;
   }
@@ -1507,13 +1560,30 @@ class GetAppIdResult {
   /// Recommendation for manifest's id attribute to match current id computed from start_url
   final String? recommendedId;
 
-  GetAppIdResult({this.appId, this.recommendedId});
+  /// The bundle ID for an Isolated Web App (IWA)
+  final String? bundleId;
+
+  /// The name of the parent app if this app is a Sub-App
+  final String? parentAppName;
+
+  GetAppIdResult({
+    this.appId,
+    this.recommendedId,
+    this.bundleId,
+    this.parentAppName,
+  });
 
   factory GetAppIdResult.fromJson(Map<String, dynamic> json) {
     return GetAppIdResult(
       appId: json.containsKey('appId') ? json['appId'] as String : null,
       recommendedId: json.containsKey('recommendedId')
           ? json['recommendedId'] as String
+          : null,
+      bundleId: json.containsKey('bundleId')
+          ? json['bundleId'] as String
+          : null,
+      parentAppName: json.containsKey('parentAppName')
+          ? json['parentAppName'] as String
           : null,
     );
   }
@@ -1786,7 +1856,6 @@ enum PermissionsPolicyFeature {
   allScreensCapture('all-screens-capture'),
   ambientLightSensor('ambient-light-sensor'),
   ariaNotify('aria-notify'),
-  attributionReporting('attribution-reporting'),
   autofill('autofill'),
   autoplay('autoplay'),
   bluetooth('bluetooth'),
@@ -1829,7 +1898,6 @@ enum PermissionsPolicyFeature {
   digitalCredentialsGet('digital-credentials-get'),
   directSockets('direct-sockets'),
   directSocketsMulticast('direct-sockets-multicast'),
-  directSocketsPrivate('direct-sockets-private'),
   displayCapture('display-capture'),
   documentDomain('document-domain'),
   encryptedMedia('encrypted-media'),
@@ -1841,11 +1909,11 @@ enum PermissionsPolicyFeature {
   gamepad('gamepad'),
   geolocation('geolocation'),
   gyroscope('gyroscope'),
+  haptics('haptics'),
   hid('hid'),
   identityCredentialsGet('identity-credentials-get'),
   idleDetection('idle-detection'),
   interestCohort('interest-cohort'),
-  joinAdInterestGroup('join-ad-interest-group'),
   keyboardMap('keyboard-map'),
   languageDetector('language-detector'),
   languageModel('language-model'),
@@ -1862,14 +1930,14 @@ enum PermissionsPolicyFeature {
   otpCredentials('otp-credentials'),
   payment('payment'),
   pictureInPicture('picture-in-picture'),
-  privateAggregation('private-aggregation'),
   privateStateTokenIssuance('private-state-token-issuance'),
   privateStateTokenRedemption('private-state-token-redemption'),
   publickeyCredentialsCreate('publickey-credentials-create'),
   publickeyCredentialsGet('publickey-credentials-get'),
-  recordAdAuctionEvents('record-ad-auction-events'),
+  publickeyCredentialsRemoteClientDataJson(
+    'publickey-credentials-remote-client-data-json',
+  ),
   rewriter('rewriter'),
-  runAdAuction('run-ad-auction'),
   screenWakeLock('screen-wake-lock'),
   serial('serial'),
   sharedStorage('shared-storage'),
@@ -1887,6 +1955,7 @@ enum PermissionsPolicyFeature {
   usbUnrestricted('usb-unrestricted'),
   verticalScroll('vertical-scroll'),
   webAppInstallation('web-app-installation'),
+  webnn('webnn'),
   webPrinting('web-printing'),
   webShare('web-share'),
   windowManagement('window-management'),
@@ -2558,6 +2627,9 @@ class ScreencastFrameMetadata {
   /// Frame swap timestamp.
   final network.TimeSinceEpoch? timestamp;
 
+  /// Frame swap timestamp as monotonic time.
+  final network.MonotonicTime? monotonicTimestamp;
+
   ScreencastFrameMetadata({
     required this.offsetTop,
     required this.pageScaleFactor,
@@ -2566,6 +2638,7 @@ class ScreencastFrameMetadata {
     required this.scrollOffsetX,
     required this.scrollOffsetY,
     this.timestamp,
+    this.monotonicTimestamp,
   });
 
   factory ScreencastFrameMetadata.fromJson(Map<String, dynamic> json) {
@@ -2579,6 +2652,9 @@ class ScreencastFrameMetadata {
       timestamp: json.containsKey('timestamp')
           ? network.TimeSinceEpoch.fromJson(json['timestamp'] as num)
           : null,
+      monotonicTimestamp: json.containsKey('monotonicTimestamp')
+          ? network.MonotonicTime.fromJson(json['monotonicTimestamp'] as num)
+          : null,
     );
   }
 
@@ -2591,6 +2667,8 @@ class ScreencastFrameMetadata {
       'scrollOffsetX': scrollOffsetX,
       'scrollOffsetY': scrollOffsetY,
       if (timestamp != null) 'timestamp': timestamp!.toJson(),
+      if (monotonicTimestamp != null)
+        'monotonicTimestamp': monotonicTimestamp!.toJson(),
     };
   }
 }
@@ -3097,8 +3175,6 @@ class FileHandler {
 
   final String name;
 
-  final List<ImageResource>? icons;
-
   /// Mimic a map, name is the key, accepts is the value.
   final List<FileFilter>? accepts;
 
@@ -3109,7 +3185,6 @@ class FileHandler {
   FileHandler({
     required this.action,
     required this.name,
-    this.icons,
     this.accepts,
     required this.launchType,
   });
@@ -3118,11 +3193,6 @@ class FileHandler {
     return FileHandler(
       action: json['action'] as String,
       name: json['name'] as String,
-      icons: json.containsKey('icons')
-          ? (json['icons'] as List)
-                .map((e) => ImageResource.fromJson(e as Map<String, dynamic>))
-                .toList()
-          : null,
       accepts: json.containsKey('accepts')
           ? (json['accepts'] as List)
                 .map((e) => FileFilter.fromJson(e as Map<String, dynamic>))
@@ -3137,7 +3207,6 @@ class FileHandler {
       'action': action,
       'name': name,
       'launchType': launchType,
-      if (icons != null) 'icons': icons!.map((e) => e.toJson()).toList(),
       if (accepts != null) 'accepts': accepts!.map((e) => e.toJson()).toList(),
     };
   }
@@ -3543,6 +3612,45 @@ class WebAppManifest {
   }
 }
 
+class SubApp {
+  /// Display name of the sub-app.
+  final String name;
+
+  /// Scope of the sub-app.
+  final String scope;
+
+  /// Manifest id of the sub-app.
+  final String manifestId;
+
+  /// Start URL of the sub-app.
+  final String startUrl;
+
+  SubApp({
+    required this.name,
+    required this.scope,
+    required this.manifestId,
+    required this.startUrl,
+  });
+
+  factory SubApp.fromJson(Map<String, dynamic> json) {
+    return SubApp(
+      name: json['name'] as String,
+      scope: json['scope'] as String,
+      manifestId: json['manifestId'] as String,
+      startUrl: json['startUrl'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'name': name,
+      'scope': scope,
+      'manifestId': manifestId,
+      'startUrl': startUrl,
+    };
+  }
+}
+
 /// The type of a frameNavigated event.
 enum NavigationType {
   navigation('Navigation'),
@@ -3734,6 +3842,7 @@ enum BackForwardCacheNotRestoredReason {
     'EmbedderExtensionSentMessageToCachedFrame',
   ),
   embedderExtensionFrame('EmbedderExtensionFrame'),
+  embedderPrivilegedWebContents('EmbedderPrivilegedWebContents'),
   requestedByWebViewClient('RequestedByWebViewClient'),
   postMessageByWebViewClient('PostMessageByWebViewClient'),
   cacheControlNoStoreDeviceBoundSessionTerminated(

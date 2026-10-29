@@ -3,7 +3,6 @@ import '../src/connection.dart';
 import 'browser.dart' as browser;
 import 'network.dart' as network;
 import 'page.dart' as page;
-import 'target.dart' as target;
 
 class StorageApi {
   final Client _client;
@@ -37,63 +36,6 @@ class StorageApi {
       .where((event) => event.name == 'Storage.indexedDBListUpdated')
       .map((event) => IndexedDBListUpdatedEvent.fromJson(event.parameters));
 
-  /// One of the interest groups was accessed. Note that these events are global
-  /// to all targets sharing an interest group store.
-  Stream<InterestGroupAccessedEvent> get onInterestGroupAccessed => _client
-      .onEvent
-      .where((event) => event.name == 'Storage.interestGroupAccessed')
-      .map((event) => InterestGroupAccessedEvent.fromJson(event.parameters));
-
-  /// An auction involving interest groups is taking place. These events are
-  /// target-specific.
-  Stream<InterestGroupAuctionEventOccurredEvent>
-  get onInterestGroupAuctionEventOccurred => _client.onEvent
-      .where(
-        (event) => event.name == 'Storage.interestGroupAuctionEventOccurred',
-      )
-      .map(
-        (event) =>
-            InterestGroupAuctionEventOccurredEvent.fromJson(event.parameters),
-      );
-
-  /// Specifies which auctions a particular network fetch may be related to, and
-  /// in what role. Note that it is not ordered with respect to
-  /// Network.requestWillBeSent (but will happen before loadingFinished
-  /// loadingFailed).
-  Stream<InterestGroupAuctionNetworkRequestCreatedEvent>
-  get onInterestGroupAuctionNetworkRequestCreated => _client.onEvent
-      .where(
-        (event) =>
-            event.name == 'Storage.interestGroupAuctionNetworkRequestCreated',
-      )
-      .map(
-        (event) => InterestGroupAuctionNetworkRequestCreatedEvent.fromJson(
-          event.parameters,
-        ),
-      );
-
-  /// Shared storage was accessed by the associated page.
-  /// The following parameters are included in all events.
-  Stream<SharedStorageAccessedEvent> get onSharedStorageAccessed => _client
-      .onEvent
-      .where((event) => event.name == 'Storage.sharedStorageAccessed')
-      .map((event) => SharedStorageAccessedEvent.fromJson(event.parameters));
-
-  /// A shared storage run or selectURL operation finished its execution.
-  /// The following parameters are included in all events.
-  Stream<SharedStorageWorkletOperationExecutionFinishedEvent>
-  get onSharedStorageWorkletOperationExecutionFinished => _client.onEvent
-      .where(
-        (event) =>
-            event.name ==
-            'Storage.sharedStorageWorkletOperationExecutionFinished',
-      )
-      .map(
-        (event) => SharedStorageWorkletOperationExecutionFinishedEvent.fromJson(
-          event.parameters,
-        ),
-      );
-
   Stream<StorageBucketInfo> get onStorageBucketCreatedOrUpdated => _client
       .onEvent
       .where((event) => event.name == 'Storage.storageBucketCreatedOrUpdated')
@@ -106,6 +48,11 @@ class StorageApi {
   Stream<String> get onStorageBucketDeleted => _client.onEvent
       .where((event) => event.name == 'Storage.storageBucketDeleted')
       .map((event) => event.parameters['bucketId'] as String);
+
+  /// Private Verification Tokens have been stored or deleted.
+  Stream<void> get onPrivateVerificationTokensUpdated => _client.onEvent.where(
+    (event) => event.name == 'Storage.privateVerificationTokensUpdated',
+  );
 
   /// Returns a storage key given a frame id.
   /// Deprecated. Please use Storage.getStorageKey instead.
@@ -123,7 +70,7 @@ class StorageApi {
   /// the storage key of the target executing this command is returned.
   Future<SerializedStorageKey> getStorageKey({page.FrameId? frameId}) async {
     var result = await _client.send('Storage.getStorageKey', {
-      if (frameId != null) 'frameId': frameId,
+      'frameId': ?frameId,
     });
     return SerializedStorageKey.fromJson(result['storageKey'] as String);
   }
@@ -158,7 +105,7 @@ class StorageApi {
     browser.BrowserContextID? browserContextId,
   }) async {
     var result = await _client.send('Storage.getCookies', {
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'browserContextId': ?browserContextId,
     });
     return (result['cookies'] as List)
         .map((e) => network.Cookie.fromJson(e as Map<String, dynamic>))
@@ -174,7 +121,7 @@ class StorageApi {
   }) async {
     await _client.send('Storage.setCookies', {
       'cookies': [...cookies],
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -184,7 +131,7 @@ class StorageApi {
     browser.BrowserContextID? browserContextId,
   }) async {
     await _client.send('Storage.clearCookies', {
-      if (browserContextId != null) 'browserContextId': browserContextId,
+      'browserContextId': ?browserContextId,
     });
   }
 
@@ -209,7 +156,7 @@ class StorageApi {
   Future<void> overrideQuotaForOrigin(String origin, {num? quotaSize}) async {
     await _client.send('Storage.overrideQuotaForOrigin', {
       'origin': origin,
-      if (quotaSize != null) 'quotaSize': quotaSize,
+      'quotaSize': ?quotaSize,
     });
   }
 
@@ -292,101 +239,52 @@ class StorageApi {
     return result['didDeleteTokens'] as bool;
   }
 
-  /// Gets details for a named interest group.
-  /// Returns: This largely corresponds to:
-  /// https://wicg.github.io/turtledove/#dictdef-generatebidinterestgroup
-  /// but has absolute expirationTime instead of relative lifetimeMs and
-  /// also adds joiningOrigin.
-  Future<Map<String, dynamic>> getInterestGroupDetails(
-    String ownerOrigin,
-    String name,
-  ) async {
-    var result = await _client.send('Storage.getInterestGroupDetails', {
-      'ownerOrigin': ownerOrigin,
-      'name': name,
-    });
-    return result['details'] as Map<String, dynamic>;
-  }
-
-  /// Enables/Disables issuing of interestGroupAccessed events.
-  Future<void> setInterestGroupTracking(bool enable) async {
-    await _client.send('Storage.setInterestGroupTracking', {'enable': enable});
-  }
-
-  /// Enables/Disables issuing of interestGroupAuctionEventOccurred and
-  /// interestGroupAuctionNetworkRequestCreated.
-  Future<void> setInterestGroupAuctionTracking(bool enable) async {
-    await _client.send('Storage.setInterestGroupAuctionTracking', {
-      'enable': enable,
-    });
-  }
-
-  /// Gets metadata for an origin's shared storage.
-  Future<SharedStorageMetadata> getSharedStorageMetadata(
-    String ownerOrigin,
-  ) async {
-    var result = await _client.send('Storage.getSharedStorageMetadata', {
-      'ownerOrigin': ownerOrigin,
-    });
-    return SharedStorageMetadata.fromJson(
-      result['metadata'] as Map<String, dynamic>,
-    );
-  }
-
-  /// Gets the entries in an given origin's shared storage.
-  Future<List<SharedStorageEntry>> getSharedStorageEntries(
-    String ownerOrigin,
-  ) async {
-    var result = await _client.send('Storage.getSharedStorageEntries', {
-      'ownerOrigin': ownerOrigin,
-    });
-    return (result['entries'] as List)
-        .map((e) => SharedStorageEntry.fromJson(e as Map<String, dynamic>))
+  /// Returns all stored Private Verification Tokens for the current browsing
+  /// context.
+  Future<List<PrivateVerificationToken>> getPrivateVerificationTokens() async {
+    var result = await _client.send('Storage.getPrivateVerificationTokens');
+    return (result['tokens'] as List)
+        .map(
+          (e) => PrivateVerificationToken.fromJson(e as Map<String, dynamic>),
+        )
         .toList();
   }
 
-  /// Sets entry with `key` and `value` for a given origin's shared storage.
-  /// [ignoreIfPresent] If `ignoreIfPresent` is included and true, then only sets the entry if
-  /// `key` doesn't already exist.
-  Future<void> setSharedStorageEntry(
-    String ownerOrigin,
-    String key,
-    String value, {
-    bool? ignoreIfPresent,
-  }) async {
-    await _client.send('Storage.setSharedStorageEntry', {
-      'ownerOrigin': ownerOrigin,
-      'key': key,
-      'value': value,
-      if (ignoreIfPresent != null) 'ignoreIfPresent': ignoreIfPresent,
+  /// Returns the configured Private Verification Tokens issuers and their redeemer
+  /// origins.
+  Future<List<PrivateVerificationTokensIssuerConfig>>
+  getPrivateVerificationTokensIssuerConfigs() async {
+    var result = await _client.send(
+      'Storage.getPrivateVerificationTokensIssuerConfigs',
+    );
+    return (result['configs'] as List)
+        .map(
+          (e) => PrivateVerificationTokensIssuerConfig.fromJson(
+            e as Map<String, dynamic>,
+          ),
+        )
+        .toList();
+  }
+
+  /// Removes all Private Verification Tokens issued by the provided issuerOrigin.
+  Future<void> clearPrivateVerificationTokens(String issuerOrigin) async {
+    await _client.send('Storage.clearPrivateVerificationTokens', {
+      'issuerOrigin': issuerOrigin,
     });
   }
 
-  /// Deletes entry for `key` (if it exists) for a given origin's shared storage.
-  Future<void> deleteSharedStorageEntry(String ownerOrigin, String key) async {
-    await _client.send('Storage.deleteSharedStorageEntry', {
-      'ownerOrigin': ownerOrigin,
-      'key': key,
+  /// Removes a specific Private Verification Token by its ID.
+  Future<void> deletePrivateVerificationToken(String tokenId) async {
+    await _client.send('Storage.deletePrivateVerificationToken', {
+      'tokenId': tokenId,
     });
   }
 
-  /// Clears all entries for a given origin's shared storage.
-  Future<void> clearSharedStorageEntries(String ownerOrigin) async {
-    await _client.send('Storage.clearSharedStorageEntries', {
-      'ownerOrigin': ownerOrigin,
+  /// Set tracking for Private Verification Tokens.
+  Future<void> setPrivateVerificationTokensTracking(bool enable) async {
+    await _client.send('Storage.setPrivateVerificationTokensTracking', {
+      'enable': enable,
     });
-  }
-
-  /// Resets the budget for `ownerOrigin` by clearing all budget withdrawals.
-  Future<void> resetSharedStorageBudget(String ownerOrigin) async {
-    await _client.send('Storage.resetSharedStorageBudget', {
-      'ownerOrigin': ownerOrigin,
-    });
-  }
-
-  /// Enables/disables issuing of sharedStorageAccessed events.
-  Future<void> setSharedStorageTracking(bool enable) async {
-    await _client.send('Storage.setSharedStorageTracking', {'enable': enable});
   }
 
   /// Set tracking for a storage key's buckets.
@@ -406,27 +304,6 @@ class StorageApi {
   Future<List<String>> runBounceTrackingMitigations() async {
     var result = await _client.send('Storage.runBounceTrackingMitigations');
     return (result['deletedSites'] as List).map((e) => e as String).toList();
-  }
-
-  /// Returns the effective Related Website Sets in use by this profile for the browser
-  /// session. The effective Related Website Sets will not change during a browser session.
-  Future<List<RelatedWebsiteSet>> getRelatedWebsiteSets() async {
-    var result = await _client.send('Storage.getRelatedWebsiteSets');
-    return (result['sets'] as List)
-        .map((e) => RelatedWebsiteSet.fromJson(e as Map<String, dynamic>))
-        .toList();
-  }
-
-  Future<void> setProtectedAudienceKAnonymity(
-    String owner,
-    String name,
-    List<String> hashes,
-  ) async {
-    await _client.send('Storage.setProtectedAudienceKAnonymity', {
-      'owner': owner,
-      'name': name,
-      'hashes': [...hashes],
-    });
   }
 }
 
@@ -545,228 +422,6 @@ class IndexedDBListUpdatedEvent {
   }
 }
 
-class InterestGroupAccessedEvent {
-  final network.TimeSinceEpoch accessTime;
-
-  final InterestGroupAccessType type;
-
-  final String ownerOrigin;
-
-  final String name;
-
-  /// For topLevelBid/topLevelAdditionalBid, and when appropriate,
-  /// win and additionalBidWin
-  final String? componentSellerOrigin;
-
-  /// For bid or somethingBid event, if done locally and not on a server.
-  final num? bid;
-
-  final String? bidCurrency;
-
-  /// For non-global events --- links to interestGroupAuctionEvent
-  final InterestGroupAuctionId? uniqueAuctionId;
-
-  InterestGroupAccessedEvent({
-    required this.accessTime,
-    required this.type,
-    required this.ownerOrigin,
-    required this.name,
-    this.componentSellerOrigin,
-    this.bid,
-    this.bidCurrency,
-    this.uniqueAuctionId,
-  });
-
-  factory InterestGroupAccessedEvent.fromJson(Map<String, dynamic> json) {
-    return InterestGroupAccessedEvent(
-      accessTime: network.TimeSinceEpoch.fromJson(json['accessTime'] as num),
-      type: InterestGroupAccessType.fromJson(json['type'] as String),
-      ownerOrigin: json['ownerOrigin'] as String,
-      name: json['name'] as String,
-      componentSellerOrigin: json.containsKey('componentSellerOrigin')
-          ? json['componentSellerOrigin'] as String
-          : null,
-      bid: json.containsKey('bid') ? json['bid'] as num : null,
-      bidCurrency: json.containsKey('bidCurrency')
-          ? json['bidCurrency'] as String
-          : null,
-      uniqueAuctionId: json.containsKey('uniqueAuctionId')
-          ? InterestGroupAuctionId.fromJson(json['uniqueAuctionId'] as String)
-          : null,
-    );
-  }
-}
-
-class InterestGroupAuctionEventOccurredEvent {
-  final network.TimeSinceEpoch eventTime;
-
-  final InterestGroupAuctionEventType type;
-
-  final InterestGroupAuctionId uniqueAuctionId;
-
-  /// Set for child auctions.
-  final InterestGroupAuctionId? parentAuctionId;
-
-  /// Set for started and configResolved
-  final Map<String, dynamic>? auctionConfig;
-
-  InterestGroupAuctionEventOccurredEvent({
-    required this.eventTime,
-    required this.type,
-    required this.uniqueAuctionId,
-    this.parentAuctionId,
-    this.auctionConfig,
-  });
-
-  factory InterestGroupAuctionEventOccurredEvent.fromJson(
-    Map<String, dynamic> json,
-  ) {
-    return InterestGroupAuctionEventOccurredEvent(
-      eventTime: network.TimeSinceEpoch.fromJson(json['eventTime'] as num),
-      type: InterestGroupAuctionEventType.fromJson(json['type'] as String),
-      uniqueAuctionId: InterestGroupAuctionId.fromJson(
-        json['uniqueAuctionId'] as String,
-      ),
-      parentAuctionId: json.containsKey('parentAuctionId')
-          ? InterestGroupAuctionId.fromJson(json['parentAuctionId'] as String)
-          : null,
-      auctionConfig: json.containsKey('auctionConfig')
-          ? json['auctionConfig'] as Map<String, dynamic>
-          : null,
-    );
-  }
-}
-
-class InterestGroupAuctionNetworkRequestCreatedEvent {
-  final InterestGroupAuctionFetchType type;
-
-  final network.RequestId requestId;
-
-  /// This is the set of the auctions using the worklet that issued this
-  /// request.  In the case of trusted signals, it's possible that only some of
-  /// them actually care about the keys being queried.
-  final List<InterestGroupAuctionId> auctions;
-
-  InterestGroupAuctionNetworkRequestCreatedEvent({
-    required this.type,
-    required this.requestId,
-    required this.auctions,
-  });
-
-  factory InterestGroupAuctionNetworkRequestCreatedEvent.fromJson(
-    Map<String, dynamic> json,
-  ) {
-    return InterestGroupAuctionNetworkRequestCreatedEvent(
-      type: InterestGroupAuctionFetchType.fromJson(json['type'] as String),
-      requestId: network.RequestId.fromJson(json['requestId'] as String),
-      auctions: (json['auctions'] as List)
-          .map((e) => InterestGroupAuctionId.fromJson(e as String))
-          .toList(),
-    );
-  }
-}
-
-class SharedStorageAccessedEvent {
-  /// Time of the access.
-  final network.TimeSinceEpoch accessTime;
-
-  /// Enum value indicating the access scope.
-  final SharedStorageAccessScope scope;
-
-  /// Enum value indicating the Shared Storage API method invoked.
-  final SharedStorageAccessMethod method;
-
-  /// DevTools Frame Token for the primary frame tree's root.
-  final page.FrameId mainFrameId;
-
-  /// Serialization of the origin owning the Shared Storage data.
-  final String ownerOrigin;
-
-  /// Serialization of the site owning the Shared Storage data.
-  final String ownerSite;
-
-  /// The sub-parameters wrapped by `params` are all optional and their
-  /// presence/absence depends on `type`.
-  final SharedStorageAccessParams params;
-
-  SharedStorageAccessedEvent({
-    required this.accessTime,
-    required this.scope,
-    required this.method,
-    required this.mainFrameId,
-    required this.ownerOrigin,
-    required this.ownerSite,
-    required this.params,
-  });
-
-  factory SharedStorageAccessedEvent.fromJson(Map<String, dynamic> json) {
-    return SharedStorageAccessedEvent(
-      accessTime: network.TimeSinceEpoch.fromJson(json['accessTime'] as num),
-      scope: SharedStorageAccessScope.fromJson(json['scope'] as String),
-      method: SharedStorageAccessMethod.fromJson(json['method'] as String),
-      mainFrameId: page.FrameId.fromJson(json['mainFrameId'] as String),
-      ownerOrigin: json['ownerOrigin'] as String,
-      ownerSite: json['ownerSite'] as String,
-      params: SharedStorageAccessParams.fromJson(
-        json['params'] as Map<String, dynamic>,
-      ),
-    );
-  }
-}
-
-class SharedStorageWorkletOperationExecutionFinishedEvent {
-  /// Time that the operation finished.
-  final network.TimeSinceEpoch finishedTime;
-
-  /// Time, in microseconds, from start of shared storage JS API call until
-  /// end of operation execution in the worklet.
-  final int executionTime;
-
-  /// Enum value indicating the Shared Storage API method invoked.
-  final SharedStorageAccessMethod method;
-
-  /// ID of the operation call.
-  final String operationId;
-
-  /// Hex representation of the DevTools token used as the TargetID for the
-  /// associated shared storage worklet.
-  final target.TargetID workletTargetId;
-
-  /// DevTools Frame Token for the primary frame tree's root.
-  final page.FrameId mainFrameId;
-
-  /// Serialization of the origin owning the Shared Storage data.
-  final String ownerOrigin;
-
-  SharedStorageWorkletOperationExecutionFinishedEvent({
-    required this.finishedTime,
-    required this.executionTime,
-    required this.method,
-    required this.operationId,
-    required this.workletTargetId,
-    required this.mainFrameId,
-    required this.ownerOrigin,
-  });
-
-  factory SharedStorageWorkletOperationExecutionFinishedEvent.fromJson(
-    Map<String, dynamic> json,
-  ) {
-    return SharedStorageWorkletOperationExecutionFinishedEvent(
-      finishedTime: network.TimeSinceEpoch.fromJson(
-        json['finishedTime'] as num,
-      ),
-      executionTime: json['executionTime'] as int,
-      method: SharedStorageAccessMethod.fromJson(json['method'] as String),
-      operationId: json['operationId'] as String,
-      workletTargetId: target.TargetID.fromJson(
-        json['workletTargetId'] as String,
-      ),
-      mainFrameId: page.FrameId.fromJson(json['mainFrameId'] as String),
-      ownerOrigin: json['ownerOrigin'] as String,
-    );
-  }
-}
-
 class GetUsageAndQuotaResult {
   /// Storage usage (bytes).
   final num usage;
@@ -816,8 +471,6 @@ enum StorageType {
   websql('websql'),
   serviceWorkers('service_workers'),
   cacheStorage('cache_storage'),
-  interestGroups('interest_groups'),
-  sharedStorage('shared_storage'),
   storageBuckets('storage_buckets'),
   all('all'),
   other('other');
@@ -878,485 +531,94 @@ class TrustTokens {
   }
 }
 
-/// Protected audience interest group auction identifier.
-extension type InterestGroupAuctionId(String value) {
-  factory InterestGroupAuctionId.fromJson(String value) =>
-      InterestGroupAuctionId(value);
+/// Details of a stored Private Verification Token.
+class PrivateVerificationToken {
+  /// Unique identifier of the token in the database.
+  final String id;
 
-  String toJson() => value;
-}
+  /// Origin of the token issuer.
+  final String issuerOrigin;
 
-/// Enum of interest group access types.
-enum InterestGroupAccessType {
-  join('join'),
-  leave('leave'),
-  update('update'),
-  loaded('loaded'),
-  bid('bid'),
-  win('win'),
-  additionalBid('additionalBid'),
-  additionalBidWin('additionalBidWin'),
-  topLevelBid('topLevelBid'),
-  topLevelAdditionalBid('topLevelAdditionalBid'),
-  clear('clear');
+  /// Public key ID used to issue the token.
+  final int keyId;
 
-  final String value;
+  /// Expiration timestamp in seconds since the epoch.
+  final network.TimeSinceEpoch expiration;
 
-  const InterestGroupAccessType(this.value);
-
-  factory InterestGroupAccessType.fromJson(String value) =>
-      InterestGroupAccessType.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
-/// Enum of auction events.
-enum InterestGroupAuctionEventType {
-  started('started'),
-  configResolved('configResolved');
-
-  final String value;
-
-  const InterestGroupAuctionEventType(this.value);
-
-  factory InterestGroupAuctionEventType.fromJson(String value) =>
-      InterestGroupAuctionEventType.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
-/// Enum of network fetches auctions can do.
-enum InterestGroupAuctionFetchType {
-  bidderJs('bidderJs'),
-  bidderWasm('bidderWasm'),
-  sellerJs('sellerJs'),
-  bidderTrustedSignals('bidderTrustedSignals'),
-  sellerTrustedSignals('sellerTrustedSignals');
-
-  final String value;
-
-  const InterestGroupAuctionFetchType(this.value);
-
-  factory InterestGroupAuctionFetchType.fromJson(String value) =>
-      InterestGroupAuctionFetchType.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
-/// Enum of shared storage access scopes.
-enum SharedStorageAccessScope {
-  window('window'),
-  sharedStorageWorklet('sharedStorageWorklet'),
-  protectedAudienceWorklet('protectedAudienceWorklet'),
-  header('header');
-
-  final String value;
-
-  const SharedStorageAccessScope(this.value);
-
-  factory SharedStorageAccessScope.fromJson(String value) =>
-      SharedStorageAccessScope.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
-/// Enum of shared storage access methods.
-enum SharedStorageAccessMethod {
-  addModule('addModule'),
-  createWorklet('createWorklet'),
-  selectUrl('selectURL'),
-  run('run'),
-  batchUpdate('batchUpdate'),
-  set('set'),
-  append('append'),
-  delete('delete'),
-  clear('clear'),
-  get('get'),
-  keys('keys'),
-  values$('values'),
-  entries('entries'),
-  length('length'),
-  remainingBudget('remainingBudget');
-
-  final String value;
-
-  const SharedStorageAccessMethod(this.value);
-
-  factory SharedStorageAccessMethod.fromJson(String value) =>
-      SharedStorageAccessMethod.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
-/// Struct for a single key-value pair in an origin's shared storage.
-class SharedStorageEntry {
-  final String key;
-
-  final String value;
-
-  SharedStorageEntry({required this.key, required this.value});
-
-  factory SharedStorageEntry.fromJson(Map<String, dynamic> json) {
-    return SharedStorageEntry(
-      key: json['key'] as String,
-      value: json['value'] as String,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'key': key, 'value': value};
-  }
-}
-
-/// Details for an origin's shared storage.
-class SharedStorageMetadata {
-  /// Time when the origin's shared storage was last created.
+  /// Token creation timestamp in seconds since the epoch.
   final network.TimeSinceEpoch creationTime;
 
-  /// Number of key-value pairs stored in origin's shared storage.
-  final int length;
+  /// Token protocol version.
+  final int version;
 
-  /// Current amount of bits of entropy remaining in the navigation budget.
-  final num remainingBudget;
+  /// Base64-encoded serialized token.
+  final String token;
 
-  /// Total number of bytes stored as key-value pairs in origin's shared
-  /// storage.
-  final int bytesUsed;
-
-  SharedStorageMetadata({
+  PrivateVerificationToken({
+    required this.id,
+    required this.issuerOrigin,
+    required this.keyId,
+    required this.expiration,
     required this.creationTime,
-    required this.length,
-    required this.remainingBudget,
-    required this.bytesUsed,
+    required this.version,
+    required this.token,
   });
 
-  factory SharedStorageMetadata.fromJson(Map<String, dynamic> json) {
-    return SharedStorageMetadata(
+  factory PrivateVerificationToken.fromJson(Map<String, dynamic> json) {
+    return PrivateVerificationToken(
+      id: json['id'] as String,
+      issuerOrigin: json['issuerOrigin'] as String,
+      keyId: json['keyId'] as int,
+      expiration: network.TimeSinceEpoch.fromJson(json['expiration'] as num),
       creationTime: network.TimeSinceEpoch.fromJson(
         json['creationTime'] as num,
       ),
-      length: json['length'] as int,
-      remainingBudget: json['remainingBudget'] as num,
-      bytesUsed: json['bytesUsed'] as int,
+      version: json['version'] as int,
+      token: json['token'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
+      'issuerOrigin': issuerOrigin,
+      'keyId': keyId,
+      'expiration': expiration.toJson(),
       'creationTime': creationTime.toJson(),
-      'length': length,
-      'remainingBudget': remainingBudget,
-      'bytesUsed': bytesUsed,
+      'version': version,
+      'token': token,
     };
   }
 }
 
-/// Represents a dictionary object passed in as privateAggregationConfig to
-/// run or selectURL.
-class SharedStoragePrivateAggregationConfig {
-  /// The chosen aggregation service deployment.
-  final String? aggregationCoordinatorOrigin;
+/// Configuration for a Private Verification Tokens issuer.
+class PrivateVerificationTokensIssuerConfig {
+  /// Origin of the token issuer.
+  final String issuerOrigin;
 
-  /// The context ID provided.
-  final String? contextId;
+  /// Origins authorized to redeem tokens from this issuer.
+  final List<String> redeemerOrigins;
 
-  /// Configures the maximum size allowed for filtering IDs.
-  final int filteringIdMaxBytes;
-
-  /// The limit on the number of contributions in the final report.
-  final int? maxContributions;
-
-  SharedStoragePrivateAggregationConfig({
-    this.aggregationCoordinatorOrigin,
-    this.contextId,
-    required this.filteringIdMaxBytes,
-    this.maxContributions,
+  PrivateVerificationTokensIssuerConfig({
+    required this.issuerOrigin,
+    required this.redeemerOrigins,
   });
 
-  factory SharedStoragePrivateAggregationConfig.fromJson(
+  factory PrivateVerificationTokensIssuerConfig.fromJson(
     Map<String, dynamic> json,
   ) {
-    return SharedStoragePrivateAggregationConfig(
-      aggregationCoordinatorOrigin:
-          json.containsKey('aggregationCoordinatorOrigin')
-          ? json['aggregationCoordinatorOrigin'] as String
-          : null,
-      contextId: json.containsKey('contextId')
-          ? json['contextId'] as String
-          : null,
-      filteringIdMaxBytes: json['filteringIdMaxBytes'] as int,
-      maxContributions: json.containsKey('maxContributions')
-          ? json['maxContributions'] as int
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'filteringIdMaxBytes': filteringIdMaxBytes,
-      if (aggregationCoordinatorOrigin != null)
-        'aggregationCoordinatorOrigin': aggregationCoordinatorOrigin,
-      if (contextId != null) 'contextId': contextId,
-      if (maxContributions != null) 'maxContributions': maxContributions,
-    };
-  }
-}
-
-/// Pair of reporting metadata details for a candidate URL for `selectURL()`.
-class SharedStorageReportingMetadata {
-  final String eventType;
-
-  final String reportingUrl;
-
-  SharedStorageReportingMetadata({
-    required this.eventType,
-    required this.reportingUrl,
-  });
-
-  factory SharedStorageReportingMetadata.fromJson(Map<String, dynamic> json) {
-    return SharedStorageReportingMetadata(
-      eventType: json['eventType'] as String,
-      reportingUrl: json['reportingUrl'] as String,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'eventType': eventType, 'reportingUrl': reportingUrl};
-  }
-}
-
-/// Bundles a candidate URL with its reporting metadata.
-class SharedStorageUrlWithMetadata {
-  /// Spec of candidate URL.
-  final String url;
-
-  /// Any associated reporting metadata.
-  final List<SharedStorageReportingMetadata> reportingMetadata;
-
-  SharedStorageUrlWithMetadata({
-    required this.url,
-    required this.reportingMetadata,
-  });
-
-  factory SharedStorageUrlWithMetadata.fromJson(Map<String, dynamic> json) {
-    return SharedStorageUrlWithMetadata(
-      url: json['url'] as String,
-      reportingMetadata: (json['reportingMetadata'] as List)
-          .map(
-            (e) => SharedStorageReportingMetadata.fromJson(
-              e as Map<String, dynamic>,
-            ),
-          )
+    return PrivateVerificationTokensIssuerConfig(
+      issuerOrigin: json['issuerOrigin'] as String,
+      redeemerOrigins: (json['redeemerOrigins'] as List)
+          .map((e) => e as String)
           .toList(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'url': url,
-      'reportingMetadata': reportingMetadata.map((e) => e.toJson()).toList(),
-    };
-  }
-}
-
-/// Bundles the parameters for shared storage access events whose
-/// presence/absence can vary according to SharedStorageAccessType.
-class SharedStorageAccessParams {
-  /// Spec of the module script URL.
-  /// Present only for SharedStorageAccessMethods: addModule and
-  /// createWorklet.
-  final String? scriptSourceUrl;
-
-  /// String denoting "context-origin", "script-origin", or a custom
-  /// origin to be used as the worklet's data origin.
-  /// Present only for SharedStorageAccessMethod: createWorklet.
-  final String? dataOrigin;
-
-  /// Name of the registered operation to be run.
-  /// Present only for SharedStorageAccessMethods: run and selectURL.
-  final String? operationName;
-
-  /// ID of the operation call.
-  /// Present only for SharedStorageAccessMethods: run and selectURL.
-  final String? operationId;
-
-  /// Whether or not to keep the worket alive for future run or selectURL
-  /// calls.
-  /// Present only for SharedStorageAccessMethods: run and selectURL.
-  final bool? keepAlive;
-
-  /// Configures the private aggregation options.
-  /// Present only for SharedStorageAccessMethods: run and selectURL.
-  final SharedStoragePrivateAggregationConfig? privateAggregationConfig;
-
-  /// The operation's serialized data in bytes (converted to a string).
-  /// Present only for SharedStorageAccessMethods: run and selectURL.
-  /// TODO(crbug.com/401011862): Consider updating this parameter to binary.
-  final String? serializedData;
-
-  /// Array of candidate URLs' specs, along with any associated metadata.
-  /// Present only for SharedStorageAccessMethod: selectURL.
-  final List<SharedStorageUrlWithMetadata>? urlsWithMetadata;
-
-  /// Spec of the URN:UUID generated for a selectURL call.
-  /// Present only for SharedStorageAccessMethod: selectURL.
-  final String? urnUuid;
-
-  /// Key for a specific entry in an origin's shared storage.
-  /// Present only for SharedStorageAccessMethods: set, append, delete, and
-  /// get.
-  final String? key;
-
-  /// Value for a specific entry in an origin's shared storage.
-  /// Present only for SharedStorageAccessMethods: set and append.
-  final String? value;
-
-  /// Whether or not to set an entry for a key if that key is already present.
-  /// Present only for SharedStorageAccessMethod: set.
-  final bool? ignoreIfPresent;
-
-  /// A number denoting the (0-based) order of the worklet's
-  /// creation relative to all other shared storage worklets created by
-  /// documents using the current storage partition.
-  /// Present only for SharedStorageAccessMethods: addModule, createWorklet.
-  final int? workletOrdinal;
-
-  /// Hex representation of the DevTools token used as the TargetID for the
-  /// associated shared storage worklet.
-  /// Present only for SharedStorageAccessMethods: addModule, createWorklet,
-  /// run, selectURL, and any other SharedStorageAccessMethod when the
-  /// SharedStorageAccessScope is sharedStorageWorklet.
-  final target.TargetID? workletTargetId;
-
-  /// Name of the lock to be acquired, if present.
-  /// Optionally present only for SharedStorageAccessMethods: batchUpdate,
-  /// set, append, delete, and clear.
-  final String? withLock;
-
-  /// If the method has been called as part of a batchUpdate, then this
-  /// number identifies the batch to which it belongs.
-  /// Optionally present only for SharedStorageAccessMethods:
-  /// batchUpdate (required), set, append, delete, and clear.
-  final String? batchUpdateId;
-
-  /// Number of modifier methods sent in batch.
-  /// Present only for SharedStorageAccessMethod: batchUpdate.
-  final int? batchSize;
-
-  SharedStorageAccessParams({
-    this.scriptSourceUrl,
-    this.dataOrigin,
-    this.operationName,
-    this.operationId,
-    this.keepAlive,
-    this.privateAggregationConfig,
-    this.serializedData,
-    this.urlsWithMetadata,
-    this.urnUuid,
-    this.key,
-    this.value,
-    this.ignoreIfPresent,
-    this.workletOrdinal,
-    this.workletTargetId,
-    this.withLock,
-    this.batchUpdateId,
-    this.batchSize,
-  });
-
-  factory SharedStorageAccessParams.fromJson(Map<String, dynamic> json) {
-    return SharedStorageAccessParams(
-      scriptSourceUrl: json.containsKey('scriptSourceUrl')
-          ? json['scriptSourceUrl'] as String
-          : null,
-      dataOrigin: json.containsKey('dataOrigin')
-          ? json['dataOrigin'] as String
-          : null,
-      operationName: json.containsKey('operationName')
-          ? json['operationName'] as String
-          : null,
-      operationId: json.containsKey('operationId')
-          ? json['operationId'] as String
-          : null,
-      keepAlive: json.containsKey('keepAlive')
-          ? json['keepAlive'] as bool
-          : null,
-      privateAggregationConfig: json.containsKey('privateAggregationConfig')
-          ? SharedStoragePrivateAggregationConfig.fromJson(
-              json['privateAggregationConfig'] as Map<String, dynamic>,
-            )
-          : null,
-      serializedData: json.containsKey('serializedData')
-          ? json['serializedData'] as String
-          : null,
-      urlsWithMetadata: json.containsKey('urlsWithMetadata')
-          ? (json['urlsWithMetadata'] as List)
-                .map(
-                  (e) => SharedStorageUrlWithMetadata.fromJson(
-                    e as Map<String, dynamic>,
-                  ),
-                )
-                .toList()
-          : null,
-      urnUuid: json.containsKey('urnUuid') ? json['urnUuid'] as String : null,
-      key: json.containsKey('key') ? json['key'] as String : null,
-      value: json.containsKey('value') ? json['value'] as String : null,
-      ignoreIfPresent: json.containsKey('ignoreIfPresent')
-          ? json['ignoreIfPresent'] as bool
-          : null,
-      workletOrdinal: json.containsKey('workletOrdinal')
-          ? json['workletOrdinal'] as int
-          : null,
-      workletTargetId: json.containsKey('workletTargetId')
-          ? target.TargetID.fromJson(json['workletTargetId'] as String)
-          : null,
-      withLock: json.containsKey('withLock')
-          ? json['withLock'] as String
-          : null,
-      batchUpdateId: json.containsKey('batchUpdateId')
-          ? json['batchUpdateId'] as String
-          : null,
-      batchSize: json.containsKey('batchSize')
-          ? json['batchSize'] as int
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      if (scriptSourceUrl != null) 'scriptSourceUrl': scriptSourceUrl,
-      if (dataOrigin != null) 'dataOrigin': dataOrigin,
-      if (operationName != null) 'operationName': operationName,
-      if (operationId != null) 'operationId': operationId,
-      if (keepAlive != null) 'keepAlive': keepAlive,
-      if (privateAggregationConfig != null)
-        'privateAggregationConfig': privateAggregationConfig!.toJson(),
-      if (serializedData != null) 'serializedData': serializedData,
-      if (urlsWithMetadata != null)
-        'urlsWithMetadata': urlsWithMetadata!.map((e) => e.toJson()).toList(),
-      if (urnUuid != null) 'urnUuid': urnUuid,
-      if (key != null) 'key': key,
-      if (value != null) 'value': value,
-      if (ignoreIfPresent != null) 'ignoreIfPresent': ignoreIfPresent,
-      if (workletOrdinal != null) 'workletOrdinal': workletOrdinal,
-      if (workletTargetId != null) 'workletTargetId': workletTargetId!.toJson(),
-      if (withLock != null) 'withLock': withLock,
-      if (batchUpdateId != null) 'batchUpdateId': batchUpdateId,
-      if (batchSize != null) 'batchSize': batchSize,
+      'issuerOrigin': issuerOrigin,
+      'redeemerOrigins': [...redeemerOrigins],
     };
   }
 }
@@ -1442,46 +704,6 @@ class StorageBucketInfo {
       'quota': quota,
       'persistent': persistent,
       'durability': durability.toJson(),
-    };
-  }
-}
-
-/// A single Related Website Set object.
-class RelatedWebsiteSet {
-  /// The primary site of this set, along with the ccTLDs if there is any.
-  final List<String> primarySites;
-
-  /// The associated sites of this set, along with the ccTLDs if there is any.
-  final List<String> associatedSites;
-
-  /// The service sites of this set, along with the ccTLDs if there is any.
-  final List<String> serviceSites;
-
-  RelatedWebsiteSet({
-    required this.primarySites,
-    required this.associatedSites,
-    required this.serviceSites,
-  });
-
-  factory RelatedWebsiteSet.fromJson(Map<String, dynamic> json) {
-    return RelatedWebsiteSet(
-      primarySites: (json['primarySites'] as List)
-          .map((e) => e as String)
-          .toList(),
-      associatedSites: (json['associatedSites'] as List)
-          .map((e) => e as String)
-          .toList(),
-      serviceSites: (json['serviceSites'] as List)
-          .map((e) => e as String)
-          .toList(),
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'primarySites': [...primarySites],
-      'associatedSites': [...associatedSites],
-      'serviceSites': [...serviceSites],
     };
   }
 }

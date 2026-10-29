@@ -98,9 +98,26 @@ class Target {
         : null;
   }
 
-  Future<Page> get page async => (await pageOrNull)!;
+  Future<Page> get page async {
+    var page = await pageOrNull;
+    if (page == null) {
+      throw StateError(
+        'Target of type "$type" (url: $url) is not a page. '
+        'Use `pageOrNull` to handle non-page targets.',
+      );
+    }
+    return page;
+  }
 
   bool get isPage => _isPageTarget(_info);
+
+  /// Whether this is a browser-internal UI target rather than a user-facing one.
+  /// Newer Chrome exposes WebUI surfaces (the tab strip, toolbar, side panel) as
+  /// `browser_ui` targets at `chrome://<name>.top-chrome/`; they should not show
+  /// up in [Browser.targets], the target event streams or [Browser.pages].
+  bool get isInternalUi =>
+      _info.type == 'browser_ui' ||
+      (Uri.tryParse(url)?.host.endsWith('.top-chrome') ?? false);
 
   /// If the target is not of type `"page"` or `"background_page"`, returns `null`.
   Future<Page?> get pageOrNull async {

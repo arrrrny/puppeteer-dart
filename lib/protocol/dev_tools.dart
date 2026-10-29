@@ -1,5 +1,6 @@
 import '../src/connection.dart';
 import 'accessibility.dart';
+import 'ads.dart';
 import 'animation.dart';
 import 'audits.dart';
 import 'autofill.dart';
@@ -13,6 +14,7 @@ import 'css.dart';
 import 'debugger.dart';
 import 'device_access.dart';
 import 'device_orientation.dart';
+import 'digital_credentials.dart';
 import 'dom.dart';
 import 'dom_debugger.dart';
 import 'dom_snapshot.dart';
@@ -23,6 +25,7 @@ import 'extensions.dart';
 import 'fed_cm.dart';
 import 'fetch.dart';
 import 'file_system.dart';
+import 'find_in_page.dart';
 import 'headless_experimental.dart';
 import 'heap_profiler.dart';
 import 'indexed_db.dart';
@@ -62,6 +65,10 @@ class DevTools {
   AccessibilityApi get accessibility =>
       _accessibility ??= AccessibilityApi(client);
   AccessibilityApi? _accessibility;
+
+  /// A domain for ad-related metrics and data.
+  AdsApi get ads => _ads ??= AdsApi(client);
+  AdsApi? _ads;
 
   AnimationApi get animation => _animation ??= AnimationApi(client);
   AnimationApi? _animation;
@@ -141,6 +148,11 @@ class DevTools {
       _deviceOrientation ??= DeviceOrientationApi(client);
   DeviceOrientationApi? _deviceOrientation;
 
+  /// This domain allows interacting with the Digital Credentials API for automation.
+  DigitalCredentialsApi get digitalCredentials =>
+      _digitalCredentials ??= DigitalCredentialsApi(client);
+  DigitalCredentialsApi? _digitalCredentials;
+
   /// This domain emulates different environments for the page.
   EmulationApi get emulation => _emulation ??= EmulationApi(client);
   EmulationApi? _emulation;
@@ -166,6 +178,10 @@ class DevTools {
 
   FileSystemApi get fileSystem => _fileSystem ??= FileSystemApi(client);
   FileSystemApi? _fileSystem;
+
+  /// This domain provides commands to trigger the "Find in page" feature.
+  FindInPageApi get findInPage => _findInPage ??= FindInPageApi(client);
+  FindInPageApi? _findInPage;
 
   /// This domain provides experimental commands only supported in headless mode.
   HeadlessExperimentalApi get headlessExperimental =>

@@ -35,8 +35,8 @@ class AuditsApi {
     var result = await _client.send('Audits.getEncodedResponse', {
       'requestId': requestId,
       'encoding': encoding,
-      if (quality != null) 'quality': quality,
-      if (sizeOnly != null) 'sizeOnly': sizeOnly,
+      'quality': ?quality,
+      'sizeOnly': ?sizeOnly,
     });
     return GetEncodedResponseResult.fromJson(result);
   }
@@ -166,9 +166,6 @@ enum CookieExclusionReason {
   excludeSameSiteLax('ExcludeSameSiteLax'),
   excludeSameSiteStrict('ExcludeSameSiteStrict'),
   excludeDomainNonAscii('ExcludeDomainNonASCII'),
-  excludeThirdPartyCookieBlockedInFirstPartySet(
-    'ExcludeThirdPartyCookieBlockedInFirstPartySet',
-  ),
   excludeThirdPartyPhaseout('ExcludeThirdPartyPhaseout'),
   excludePortMismatch('ExcludePortMismatch'),
   excludeSchemeMismatch('ExcludeSchemeMismatch');
@@ -443,7 +440,6 @@ enum MixedContentResolutionStatus {
 }
 
 enum MixedContentResourceType {
-  attributionSrc('AttributionSrc'),
   audio('Audio'),
   beacon('Beacon'),
   cspReport('CSPReport'),
@@ -951,46 +947,6 @@ class CorsIssueDetails {
   }
 }
 
-enum AttributionReportingIssueType {
-  permissionPolicyDisabled('PermissionPolicyDisabled'),
-  untrustworthyReportingOrigin('UntrustworthyReportingOrigin'),
-  insecureContext('InsecureContext'),
-  invalidHeader('InvalidHeader'),
-  invalidRegisterTriggerHeader('InvalidRegisterTriggerHeader'),
-  sourceAndTriggerHeaders('SourceAndTriggerHeaders'),
-  sourceIgnored('SourceIgnored'),
-  triggerIgnored('TriggerIgnored'),
-  osSourceIgnored('OsSourceIgnored'),
-  osTriggerIgnored('OsTriggerIgnored'),
-  invalidRegisterOsSourceHeader('InvalidRegisterOsSourceHeader'),
-  invalidRegisterOsTriggerHeader('InvalidRegisterOsTriggerHeader'),
-  webAndOsHeaders('WebAndOsHeaders'),
-  noWebOrOsSupport('NoWebOrOsSupport'),
-  navigationRegistrationWithoutTransientUserActivation(
-    'NavigationRegistrationWithoutTransientUserActivation',
-  ),
-  invalidInfoHeader('InvalidInfoHeader'),
-  noRegisterSourceHeader('NoRegisterSourceHeader'),
-  noRegisterTriggerHeader('NoRegisterTriggerHeader'),
-  noRegisterOsSourceHeader('NoRegisterOsSourceHeader'),
-  noRegisterOsTriggerHeader('NoRegisterOsTriggerHeader'),
-  navigationRegistrationUniqueScopeAlreadySet(
-    'NavigationRegistrationUniqueScopeAlreadySet',
-  );
-
-  final String value;
-
-  const AttributionReportingIssueType(this.value);
-
-  factory AttributionReportingIssueType.fromJson(String value) =>
-      AttributionReportingIssueType.values.firstWhere((e) => e.value == value);
-
-  String toJson() => value;
-
-  @override
-  String toString() => value.toString();
-}
-
 enum SharedDictionaryError {
   useErrorCrossOriginNoCorsRequest('UseErrorCrossOriginNoCorsRequest'),
   useErrorDictionaryLoadFailure('UseErrorDictionaryLoadFailure'),
@@ -1013,6 +969,7 @@ enum SharedDictionaryError {
   writeErrorNonSecureContext('WriteErrorNonSecureContext'),
   writeErrorNonStringIdField('WriteErrorNonStringIdField'),
   writeErrorNonStringInMatchDestList('WriteErrorNonStringInMatchDestList'),
+  writeErrorInvalidMatchDestList('WriteErrorInvalidMatchDestList'),
   writeErrorNonStringMatchField('WriteErrorNonStringMatchField'),
   writeErrorNonTokenTypeField('WriteErrorNonTokenTypeField'),
   writeErrorRequestAborted('WriteErrorRequestAborted'),
@@ -1072,7 +1029,11 @@ enum SRIMessageSignatureError {
   validationFailedSignatureExpired('ValidationFailedSignatureExpired'),
   validationFailedInvalidLength('ValidationFailedInvalidLength'),
   validationFailedSignatureMismatch('ValidationFailedSignatureMismatch'),
-  validationFailedIntegrityMismatch('ValidationFailedIntegrityMismatch');
+  validationFailedIntegrityMismatch('ValidationFailedIntegrityMismatch'),
+  signatureBaseUnknownDerivedComponent('SignatureBaseUnknownDerivedComponent'),
+  signatureBaseMissingHeader('SignatureBaseMissingHeader'),
+  signatureBaseInvalidUnencodedDigest('SignatureBaseInvalidUnencodedDigest'),
+  signatureBaseUnsupportedComponent('SignatureBaseUnsupportedComponent');
 
   final String value;
 
@@ -1112,7 +1073,12 @@ enum ConnectionAllowlistError {
   itemNotInnerList('ItemNotInnerList'),
   invalidAllowlistItemType('InvalidAllowlistItemType'),
   reportingEndpointNotToken('ReportingEndpointNotToken'),
-  invalidUrlPattern('InvalidUrlPattern');
+  invalidUrlPattern('InvalidUrlPattern'),
+  iFrameAttributeLoosensEmbeddingRequirement(
+    'IFrameAttributeLoosensEmbeddingRequirement',
+  ),
+  invalidAllowConnectionAllowlistFrom('InvalidAllowConnectionAllowlistFrom'),
+  embeddingRequirementNotSatisfied('EmbeddingRequirementNotSatisfied');
 
   final String value;
 
@@ -1125,51 +1091,6 @@ enum ConnectionAllowlistError {
 
   @override
   String toString() => value.toString();
-}
-
-/// Details for issues around "Attribution Reporting API" usage.
-/// Explainer: https://github.com/WICG/attribution-reporting-api
-class AttributionReportingIssueDetails {
-  final AttributionReportingIssueType violationType;
-
-  final AffectedRequest? request;
-
-  final dom.BackendNodeId? violatingNodeId;
-
-  final String? invalidParameter;
-
-  AttributionReportingIssueDetails({
-    required this.violationType,
-    this.request,
-    this.violatingNodeId,
-    this.invalidParameter,
-  });
-
-  factory AttributionReportingIssueDetails.fromJson(Map<String, dynamic> json) {
-    return AttributionReportingIssueDetails(
-      violationType: AttributionReportingIssueType.fromJson(
-        json['violationType'] as String,
-      ),
-      request: json.containsKey('request')
-          ? AffectedRequest.fromJson(json['request'] as Map<String, dynamic>)
-          : null,
-      violatingNodeId: json.containsKey('violatingNodeId')
-          ? dom.BackendNodeId.fromJson(json['violatingNodeId'] as int)
-          : null,
-      invalidParameter: json.containsKey('invalidParameter')
-          ? json['invalidParameter'] as String
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'violationType': violationType.toJson(),
-      if (request != null) 'request': request!.toJson(),
-      if (violatingNodeId != null) 'violatingNodeId': violatingNodeId!.toJson(),
-      if (invalidParameter != null) 'invalidParameter': invalidParameter,
-    };
-  }
 }
 
 /// Details for issues about documents in Quirks Mode
@@ -1374,6 +1295,7 @@ enum GenericIssueErrorType {
   ),
   responseWasBlockedByOrb('ResponseWasBlockedByORB'),
   navigationEntryMarkedSkippable('NavigationEntryMarkedSkippable'),
+  backUiNavigationWouldSkipAd('BackUINavigationWouldSkipAd'),
   autofillAndManualTextPolicyControlledFeaturesInfo(
     'AutofillAndManualTextPolicyControlledFeaturesInfo',
   ),
@@ -1614,6 +1536,9 @@ enum FederatedAuthRequestIssueReason {
   tooManyRequests('TooManyRequests'),
   wellKnownHttpNotFound('WellKnownHttpNotFound'),
   wellKnownNoResponse('WellKnownNoResponse'),
+  wellKnownBlockedByConnectionAllowlist(
+    'WellKnownBlockedByConnectionAllowlist',
+  ),
   wellKnownInvalidResponse('WellKnownInvalidResponse'),
   wellKnownListEmpty('WellKnownListEmpty'),
   wellKnownInvalidContentType('WellKnownInvalidContentType'),
@@ -1621,6 +1546,7 @@ enum FederatedAuthRequestIssueReason {
   wellKnownTooBig('WellKnownTooBig'),
   configHttpNotFound('ConfigHttpNotFound'),
   configNoResponse('ConfigNoResponse'),
+  configBlockedByConnectionAllowlist('ConfigBlockedByConnectionAllowlist'),
   configInvalidResponse('ConfigInvalidResponse'),
   configInvalidContentType('ConfigInvalidContentType'),
   idpNotPotentiallyTrustworthy('IdpNotPotentiallyTrustworthy'),
@@ -1630,11 +1556,13 @@ enum FederatedAuthRequestIssueReason {
   invalidSigninResponse('InvalidSigninResponse'),
   accountsHttpNotFound('AccountsHttpNotFound'),
   accountsNoResponse('AccountsNoResponse'),
+  accountsBlockedByConnectionAllowlist('AccountsBlockedByConnectionAllowlist'),
   accountsInvalidResponse('AccountsInvalidResponse'),
   accountsListEmpty('AccountsListEmpty'),
   accountsInvalidContentType('AccountsInvalidContentType'),
   idTokenHttpNotFound('IdTokenHttpNotFound'),
   idTokenNoResponse('IdTokenNoResponse'),
+  idTokenBlockedByConnectionAllowlist('IdTokenBlockedByConnectionAllowlist'),
   idTokenInvalidResponse('IdTokenInvalidResponse'),
   idTokenIdpErrorResponse('IdTokenIdpErrorResponse'),
   idTokenCrossSiteIdpErrorResponse('IdTokenCrossSiteIdpErrorResponse'),
@@ -1651,7 +1579,8 @@ enum FederatedAuthRequestIssueReason {
   typeNotMatching('TypeNotMatching'),
   uiDismissedNoEmbargo('UiDismissedNoEmbargo'),
   corsError('CorsError'),
-  suppressedBySegmentationPlatform('SuppressedBySegmentationPlatform');
+  suppressedBySegmentationPlatform('SuppressedBySegmentationPlatform'),
+  popupBlockedByConnectionAllowlist('PopupBlockedByConnectionAllowlist');
 
   final String value;
 
@@ -1715,6 +1644,128 @@ enum FederatedAuthUserInfoRequestIssueReason {
 
   factory FederatedAuthUserInfoRequestIssueReason.fromJson(String value) =>
       FederatedAuthUserInfoRequestIssueReason.values.firstWhere(
+        (e) => e.value == value,
+      );
+
+  String toJson() => value;
+
+  @override
+  String toString() => value.toString();
+}
+
+class EmailVerificationRequestIssueDetails {
+  final EmailVerificationRequestIssueReason emailVerificationRequestIssueReason;
+
+  EmailVerificationRequestIssueDetails({
+    required this.emailVerificationRequestIssueReason,
+  });
+
+  factory EmailVerificationRequestIssueDetails.fromJson(
+    Map<String, dynamic> json,
+  ) {
+    return EmailVerificationRequestIssueDetails(
+      emailVerificationRequestIssueReason:
+          EmailVerificationRequestIssueReason.fromJson(
+            json['emailVerificationRequestIssueReason'] as String,
+          ),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'emailVerificationRequestIssueReason': emailVerificationRequestIssueReason
+          .toJson(),
+    };
+  }
+}
+
+/// Represents the failure reason when an email verification request fails.
+/// Should be updated alongside EmailVerificationRequestResult in
+/// third_party/blink/public/mojom/devtools/inspector_issue.mojom.
+enum EmailVerificationRequestIssueReason {
+  invalidEmail('InvalidEmail'),
+  dnsFetchFailed('DnsFetchFailed'),
+  dnsInvalidRecord('DnsInvalidRecord'),
+  wellKnownHttpNotFound('WellKnownHttpNotFound'),
+  wellKnownNoResponse('WellKnownNoResponse'),
+  wellKnownInvalidResponse('WellKnownInvalidResponse'),
+  wellKnownListEmpty('WellKnownListEmpty'),
+  wellKnownInvalidContentType('WellKnownInvalidContentType'),
+  wellKnownMissingIssuanceEndpoint('WellKnownMissingIssuanceEndpoint'),
+  wellKnownIssuanceEndpointCrossOrigin('WellKnownIssuanceEndpointCrossOrigin'),
+  wellKnownUnsupportedSigningAlgorithm('WellKnownUnsupportedSigningAlgorithm'),
+  tokenHttpNotFound('TokenHttpNotFound'),
+  tokenNoResponse('TokenNoResponse'),
+  tokenInvalidResponse('TokenInvalidResponse'),
+  tokenInvalidContentType('TokenInvalidContentType'),
+  tokenMalformedSdJwt('TokenMalformedSdJwt'),
+  tokenInvalidSdJwt('TokenInvalidSdJwt'),
+  keyBindingSigningFailed('KeyBindingSigningFailed'),
+  rpOriginIsOpaque('RpOriginIsOpaque'),
+  wellKnownMissingAccountsEndpoint('WellKnownMissingAccountsEndpoint'),
+  userLoggedOut('UserLoggedOut'),
+  wellKnownAccountsEndpointCrossOrigin('WellKnownAccountsEndpointCrossOrigin'),
+  accountsHttpNotFound('AccountsHttpNotFound'),
+  accountsNoResponse('AccountsNoResponse'),
+  accountsInvalidResponse('AccountsInvalidResponse'),
+  accountsInvalidContentType('AccountsInvalidContentType'),
+  accountsEmptyList('AccountsEmptyList'),
+  emailVerificationWellKnownHttpNotFound(
+    'EmailVerificationWellKnownHttpNotFound',
+  ),
+  emailVerificationWellKnownNoResponse('EmailVerificationWellKnownNoResponse'),
+  emailVerificationWellKnownInvalidResponse(
+    'EmailVerificationWellKnownInvalidResponse',
+  ),
+  emailVerificationWellKnownInvalidContentType(
+    'EmailVerificationWellKnownInvalidContentType',
+  ),
+  jwksHttpNotFound('JwksHttpNotFound'),
+  jwksInvalidResponse('JwksInvalidResponse'),
+  tokenVerificationSdJwtUnsupportedHeaderAlg(
+    'TokenVerificationSdJwtUnsupportedHeaderAlg',
+  ),
+  tokenVerificationSdJwtInvalidTyp('TokenVerificationSdJwtInvalidTyp'),
+  tokenVerificationSdJwtMissingIss('TokenVerificationSdJwtMissingIss'),
+  tokenVerificationSdJwtMissingIat('TokenVerificationSdJwtMissingIat'),
+  tokenVerificationSdJwtMissingCnf('TokenVerificationSdJwtMissingCnf'),
+  tokenVerificationSdJwtMissingEmail('TokenVerificationSdJwtMissingEmail'),
+  tokenVerificationSdJwtInvalidIssuedAt(
+    'TokenVerificationSdJwtInvalidIssuedAt',
+  ),
+  tokenVerificationSdJwtInvalidIssuer('TokenVerificationSdJwtInvalidIssuer'),
+  tokenVerificationSdJwtJwksMissingKeys(
+    'TokenVerificationSdJwtJwksMissingKeys',
+  ),
+  tokenVerificationSdJwtSignatureFailed(
+    'TokenVerificationSdJwtSignatureFailed',
+  ),
+  tokenVerificationSdJwtInvalidEmailVerified(
+    'TokenVerificationSdJwtInvalidEmailVerified',
+  ),
+  tokenVerificationSdJwtInvalidEmail('TokenVerificationSdJwtInvalidEmail'),
+  tokenVerificationSdJwtInvalidHolderKey(
+    'TokenVerificationSdJwtInvalidHolderKey',
+  ),
+  tokenVerificationKbInvalidTyp('TokenVerificationKbInvalidTyp'),
+  tokenVerificationKbMissingAud('TokenVerificationKbMissingAud'),
+  tokenVerificationKbMissingNonce('TokenVerificationKbMissingNonce'),
+  tokenVerificationKbMissingIat('TokenVerificationKbMissingIat'),
+  tokenVerificationKbMissingSdHash('TokenVerificationKbMissingSdHash'),
+  tokenVerificationKbInvalidIssuedAt('TokenVerificationKbInvalidIssuedAt'),
+  tokenVerificationKbInvalidAudience('TokenVerificationKbInvalidAudience'),
+  tokenVerificationKbInvalidNonce('TokenVerificationKbInvalidNonce'),
+  tokenVerificationKbInvalidSdHash('TokenVerificationKbInvalidSdHash'),
+  tokenVerificationKbMissingCnf('TokenVerificationKbMissingCnf'),
+  tokenVerificationKbSignatureFailed('TokenVerificationKbSignatureFailed'),
+  crossOriginIframeNotSupported('CrossOriginIframeNotSupported');
+
+  final String value;
+
+  const EmailVerificationRequestIssueReason(this.value);
+
+  factory EmailVerificationRequestIssueReason.fromJson(String value) =>
+      EmailVerificationRequestIssueReason.values.firstWhere(
         (e) => e.value == value,
       );
 
@@ -2093,7 +2144,9 @@ enum PermissionElementIssueType {
   lowContrast('LowContrast'),
   fontSizeTooSmall('FontSizeTooSmall'),
   fontSizeTooLarge('FontSizeTooLarge'),
-  invalidSizeValue('InvalidSizeValue');
+  invalidSizeValue('InvalidSizeValue'),
+  nonSecureContext('NonSecureContext'),
+  missingTransientUserActivation('MissingTransientUserActivation');
 
   final String value;
 
@@ -2187,6 +2240,52 @@ class PermissionElementIssueDetails {
   }
 }
 
+enum WebInstallIssueReason {
+  manifestParsingOrNetworkError('ManifestParsingOrNetworkError'),
+  startUrlInvalid('StartUrlInvalid'),
+  manifestMissingNameOrShortName('ManifestMissingNameOrShortName'),
+  manifestMissingId('ManifestMissingId'),
+  noManifest('NoManifest');
+
+  final String value;
+
+  const WebInstallIssueReason(this.value);
+
+  factory WebInstallIssueReason.fromJson(String value) =>
+      WebInstallIssueReason.values.firstWhere((e) => e.value == value);
+
+  String toJson() => value;
+
+  @override
+  String toString() => value.toString();
+}
+
+/// This issue reports a failure involving a web app manifest used by a Web
+/// Install operation.
+class WebInstallIssueDetails {
+  final String? manifestUrl;
+
+  final WebInstallIssueReason reason;
+
+  WebInstallIssueDetails({this.manifestUrl, required this.reason});
+
+  factory WebInstallIssueDetails.fromJson(Map<String, dynamic> json) {
+    return WebInstallIssueDetails(
+      manifestUrl: json.containsKey('manifestUrl')
+          ? json['manifestUrl'] as String
+          : null,
+      reason: WebInstallIssueReason.fromJson(json['reason'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'reason': reason.toJson(),
+      if (manifestUrl != null) 'manifestUrl': manifestUrl,
+    };
+  }
+}
+
 /// The issue warns about blocked calls to privacy sensitive APIs via the
 /// Selective Permissions Intervention.
 class SelectivePermissionsInterventionIssueDetails {
@@ -2230,6 +2329,36 @@ class SelectivePermissionsInterventionIssueDetails {
   }
 }
 
+/// Details for issues about lazy-loaded images without explicit dimensions.
+class LazyLoadImageIssueDetails {
+  /// DOM node of the problematic HTMLImageElement.
+  final dom.BackendNodeId nodeId;
+
+  /// URL or src attribute of the image.
+  final String url;
+
+  /// Frame containing the image.
+  final page.FrameId frameId;
+
+  LazyLoadImageIssueDetails({
+    required this.nodeId,
+    required this.url,
+    required this.frameId,
+  });
+
+  factory LazyLoadImageIssueDetails.fromJson(Map<String, dynamic> json) {
+    return LazyLoadImageIssueDetails(
+      nodeId: dom.BackendNodeId.fromJson(json['nodeId'] as int),
+      url: json['url'] as String,
+      frameId: page.FrameId.fromJson(json['frameId'] as String),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'nodeId': nodeId.toJson(), 'url': url, 'frameId': frameId.toJson()};
+  }
+}
+
 /// A unique identifier for the type of issue. Each type may use one of the
 /// optional fields in InspectorIssueDetails to convey more specific
 /// information about the kind of issue.
@@ -2241,7 +2370,6 @@ enum InspectorIssueCode {
   contentSecurityPolicyIssue('ContentSecurityPolicyIssue'),
   sharedArrayBufferIssue('SharedArrayBufferIssue'),
   corsIssue('CorsIssue'),
-  attributionReportingIssue('AttributionReportingIssue'),
   quirksModeIssue('QuirksModeIssue'),
   partitioningBlobUrlIssue('PartitioningBlobURLIssue'),
   navigatorUserAgentIssue('NavigatorUserAgentIssue'),
@@ -2264,7 +2392,10 @@ enum InspectorIssueCode {
   performanceIssue('PerformanceIssue'),
   selectivePermissionsInterventionIssue(
     'SelectivePermissionsInterventionIssue',
-  );
+  ),
+  emailVerificationRequestIssue('EmailVerificationRequestIssue'),
+  lazyLoadImageIssue('LazyLoadImageIssue'),
+  webInstallIssue('WebInstallIssue');
 
   final String value;
 
@@ -2296,8 +2427,6 @@ class InspectorIssueDetails {
   final SharedArrayBufferIssueDetails? sharedArrayBufferIssueDetails;
 
   final CorsIssueDetails? corsIssueDetails;
-
-  final AttributionReportingIssueDetails? attributionReportingIssueDetails;
 
   final QuirksModeIssueDetails? quirksModeIssueDetails;
 
@@ -2342,6 +2471,13 @@ class InspectorIssueDetails {
   final SelectivePermissionsInterventionIssueDetails?
   selectivePermissionsInterventionIssueDetails;
 
+  final EmailVerificationRequestIssueDetails?
+  emailVerificationRequestIssueDetails;
+
+  final LazyLoadImageIssueDetails? lazyLoadImageIssueDetails;
+
+  final WebInstallIssueDetails? webInstallIssueDetails;
+
   InspectorIssueDetails({
     this.cookieIssueDetails,
     this.mixedContentIssueDetails,
@@ -2350,7 +2486,6 @@ class InspectorIssueDetails {
     this.contentSecurityPolicyIssueDetails,
     this.sharedArrayBufferIssueDetails,
     this.corsIssueDetails,
-    this.attributionReportingIssueDetails,
     this.quirksModeIssueDetails,
     this.partitioningBlobURLIssueDetails,
     this.genericIssueDetails,
@@ -2371,6 +2506,9 @@ class InspectorIssueDetails {
     this.permissionElementIssueDetails,
     this.performanceIssueDetails,
     this.selectivePermissionsInterventionIssueDetails,
+    this.emailVerificationRequestIssueDetails,
+    this.lazyLoadImageIssueDetails,
+    this.webInstallIssueDetails,
   });
 
   factory InspectorIssueDetails.fromJson(Map<String, dynamic> json) {
@@ -2411,12 +2549,6 @@ class InspectorIssueDetails {
       corsIssueDetails: json.containsKey('corsIssueDetails')
           ? CorsIssueDetails.fromJson(
               json['corsIssueDetails'] as Map<String, dynamic>,
-            )
-          : null,
-      attributionReportingIssueDetails:
-          json.containsKey('attributionReportingIssueDetails')
-          ? AttributionReportingIssueDetails.fromJson(
-              json['attributionReportingIssueDetails'] as Map<String, dynamic>,
             )
           : null,
       quirksModeIssueDetails: json.containsKey('quirksModeIssueDetails')
@@ -2535,6 +2667,23 @@ class InspectorIssueDetails {
                   as Map<String, dynamic>,
             )
           : null,
+      emailVerificationRequestIssueDetails:
+          json.containsKey('emailVerificationRequestIssueDetails')
+          ? EmailVerificationRequestIssueDetails.fromJson(
+              json['emailVerificationRequestIssueDetails']
+                  as Map<String, dynamic>,
+            )
+          : null,
+      lazyLoadImageIssueDetails: json.containsKey('lazyLoadImageIssueDetails')
+          ? LazyLoadImageIssueDetails.fromJson(
+              json['lazyLoadImageIssueDetails'] as Map<String, dynamic>,
+            )
+          : null,
+      webInstallIssueDetails: json.containsKey('webInstallIssueDetails')
+          ? WebInstallIssueDetails.fromJson(
+              json['webInstallIssueDetails'] as Map<String, dynamic>,
+            )
+          : null,
     );
   }
 
@@ -2557,9 +2706,6 @@ class InspectorIssueDetails {
             .toJson(),
       if (corsIssueDetails != null)
         'corsIssueDetails': corsIssueDetails!.toJson(),
-      if (attributionReportingIssueDetails != null)
-        'attributionReportingIssueDetails': attributionReportingIssueDetails!
-            .toJson(),
       if (quirksModeIssueDetails != null)
         'quirksModeIssueDetails': quirksModeIssueDetails!.toJson(),
       if (partitioningBlobURLIssueDetails != null)
@@ -2611,6 +2757,13 @@ class InspectorIssueDetails {
       if (selectivePermissionsInterventionIssueDetails != null)
         'selectivePermissionsInterventionIssueDetails':
             selectivePermissionsInterventionIssueDetails!.toJson(),
+      if (emailVerificationRequestIssueDetails != null)
+        'emailVerificationRequestIssueDetails':
+            emailVerificationRequestIssueDetails!.toJson(),
+      if (lazyLoadImageIssueDetails != null)
+        'lazyLoadImageIssueDetails': lazyLoadImageIssueDetails!.toJson(),
+      if (webInstallIssueDetails != null)
+        'webInstallIssueDetails': webInstallIssueDetails!.toJson(),
     };
   }
 }

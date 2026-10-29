@@ -48,7 +48,7 @@ class DebuggerApi {
     );
     await _client.send('Debugger.continueToLocation', {
       'location': location,
-      if (targetCallFrames != null) 'targetCallFrames': targetCallFrames,
+      'targetCallFrames': ?targetCallFrames,
     });
   }
 
@@ -64,8 +64,7 @@ class DebuggerApi {
   /// Returns: Unique identifier of the debugger.
   Future<runtime.UniqueDebuggerId> enable({num? maxScriptsCacheSize}) async {
     var result = await _client.send('Debugger.enable', {
-      if (maxScriptsCacheSize != null)
-        'maxScriptsCacheSize': maxScriptsCacheSize,
+      'maxScriptsCacheSize': ?maxScriptsCacheSize,
     });
     return runtime.UniqueDebuggerId.fromJson(result['debuggerId'] as String);
   }
@@ -83,6 +82,7 @@ class DebuggerApi {
   /// [generatePreview] Whether preview should be generated for the result.
   /// [throwOnSideEffect] Whether to throw an exception if side effect cannot be ruled out during evaluation.
   /// [timeout] Terminate execution after timing out (number of milliseconds).
+  /// [scopeNumber] Specifies the scope number to evaluate the expression in (default: 0, innermost scope).
   Future<EvaluateOnCallFrameResult> evaluateOnCallFrame(
     CallFrameId callFrameId,
     String expression, {
@@ -93,18 +93,19 @@ class DebuggerApi {
     bool? generatePreview,
     bool? throwOnSideEffect,
     runtime.TimeDelta? timeout,
+    int? scopeNumber,
   }) async {
     var result = await _client.send('Debugger.evaluateOnCallFrame', {
       'callFrameId': callFrameId,
       'expression': expression,
-      if (objectGroup != null) 'objectGroup': objectGroup,
-      if (includeCommandLineAPI != null)
-        'includeCommandLineAPI': includeCommandLineAPI,
-      if (silent != null) 'silent': silent,
-      if (returnByValue != null) 'returnByValue': returnByValue,
-      if (generatePreview != null) 'generatePreview': generatePreview,
-      if (throwOnSideEffect != null) 'throwOnSideEffect': throwOnSideEffect,
-      if (timeout != null) 'timeout': timeout,
+      'objectGroup': ?objectGroup,
+      'includeCommandLineAPI': ?includeCommandLineAPI,
+      'silent': ?silent,
+      'returnByValue': ?returnByValue,
+      'generatePreview': ?generatePreview,
+      'throwOnSideEffect': ?throwOnSideEffect,
+      'timeout': ?timeout,
+      'scopeNumber': ?scopeNumber,
     });
     return EvaluateOnCallFrameResult.fromJson(result);
   }
@@ -123,8 +124,8 @@ class DebuggerApi {
   }) async {
     var result = await _client.send('Debugger.getPossibleBreakpoints', {
       'start': start,
-      if (end != null) 'end': end,
-      if (restrictToFunction != null) 'restrictToFunction': restrictToFunction,
+      'end': ?end,
+      'restrictToFunction': ?restrictToFunction,
     });
     return (result['locations'] as List)
         .map((e) => BreakLocation.fromJson(e as Map<String, dynamic>))
@@ -232,7 +233,7 @@ class DebuggerApi {
     assert(mode == null || const ['StepInto'].contains(mode));
     var result = await _client.send('Debugger.restartFrame', {
       'callFrameId': callFrameId,
-      if (mode != null) 'mode': mode,
+      'mode': ?mode,
     });
     return RestartFrameResult.fromJson(result);
   }
@@ -245,7 +246,7 @@ class DebuggerApi {
   /// If execution is currently not paused, this parameter has no effect.
   Future<void> resume({bool? terminateOnResume}) async {
     await _client.send('Debugger.resume', {
-      if (terminateOnResume != null) 'terminateOnResume': terminateOnResume,
+      'terminateOnResume': ?terminateOnResume,
     });
   }
 
@@ -264,8 +265,8 @@ class DebuggerApi {
     var result = await _client.send('Debugger.searchInContent', {
       'scriptId': scriptId,
       'query': query,
-      if (caseSensitive != null) 'caseSensitive': caseSensitive,
-      if (isRegex != null) 'isRegex': isRegex,
+      'caseSensitive': ?caseSensitive,
+      'isRegex': ?isRegex,
     });
     return (result['result'] as List)
         .map((e) => SearchMatch.fromJson(e as Map<String, dynamic>))
@@ -302,7 +303,7 @@ class DebuggerApi {
   }) async {
     await _client.send('Debugger.setBlackboxPatterns', {
       'patterns': [...patterns],
-      if (skipAnonymous != null) 'skipAnonymous': skipAnonymous,
+      'skipAnonymous': ?skipAnonymous,
     });
   }
 
@@ -331,7 +332,7 @@ class DebuggerApi {
   }) async {
     var result = await _client.send('Debugger.setBreakpoint', {
       'location': location,
-      if (condition != null) 'condition': condition,
+      'condition': ?condition,
     });
     return SetBreakpointResult.fromJson(result);
   }
@@ -377,11 +378,11 @@ class DebuggerApi {
   }) async {
     var result = await _client.send('Debugger.setBreakpointByUrl', {
       'lineNumber': lineNumber,
-      if (url != null) 'url': url,
-      if (urlRegex != null) 'urlRegex': urlRegex,
-      if (scriptHash != null) 'scriptHash': scriptHash,
-      if (columnNumber != null) 'columnNumber': columnNumber,
-      if (condition != null) 'condition': condition,
+      'url': ?url,
+      'urlRegex': ?urlRegex,
+      'scriptHash': ?scriptHash,
+      'columnNumber': ?columnNumber,
+      'condition': ?condition,
     });
     return SetBreakpointByUrlResult.fromJson(result);
   }
@@ -399,7 +400,7 @@ class DebuggerApi {
   }) async {
     var result = await _client.send('Debugger.setBreakpointOnFunctionCall', {
       'objectId': objectId,
-      if (condition != null) 'condition': condition,
+      'condition': ?condition,
     });
     return BreakpointId.fromJson(result['breakpointId'] as String);
   }
@@ -426,19 +427,14 @@ class DebuggerApi {
     await _client.send('Debugger.setReturnValue', {'newValue': newValue});
   }
 
-  /// Edits JavaScript source live.
-  ///
-  /// In general, functions that are currently on the stack can not be edited with
-  /// a single exception: If the edited function is the top-most stack frame and
-  /// that is the only activation of that function on the stack. In this case
-  /// the live edit will be successful and a `Debugger.restartFrame` for the
-  /// top-most function is automatically triggered.
+  /// Live edit is no longer supported and this command always fails with a "no longer available" error.
   /// [scriptId] Id of the script to edit.
   /// [scriptSource] New content of the script.
   /// [dryRun] If true the change will not actually be applied. Dry run may be used to get result
   /// description without actually modifying the code.
   /// [allowTopFrameEditing] If true, then `scriptSource` is allowed to change the function on top of the stack
   /// as long as the top-most stack frame is the only activation of that function.
+  @Deprecated('This command is deprecated')
   Future<SetScriptSourceResult> setScriptSource(
     runtime.ScriptId scriptId,
     String scriptSource, {
@@ -448,9 +444,8 @@ class DebuggerApi {
     var result = await _client.send('Debugger.setScriptSource', {
       'scriptId': scriptId,
       'scriptSource': scriptSource,
-      if (dryRun != null) 'dryRun': dryRun,
-      if (allowTopFrameEditing != null)
-        'allowTopFrameEditing': allowTopFrameEditing,
+      'dryRun': ?dryRun,
+      'allowTopFrameEditing': ?allowTopFrameEditing,
     });
     return SetScriptSourceResult.fromJson(result);
   }
@@ -491,7 +486,7 @@ class DebuggerApi {
     List<LocationRange>? skipList,
   }) async {
     await _client.send('Debugger.stepInto', {
-      if (breakOnAsyncCall != null) 'breakOnAsyncCall': breakOnAsyncCall,
+      'breakOnAsyncCall': ?breakOnAsyncCall,
       if (skipList != null) 'skipList': [...skipList],
     });
   }
@@ -1203,12 +1198,20 @@ class Scope {
   /// Location in the source code where scope ends
   final Location? endLocation;
 
+  /// True if the scope does not declare any variables.
+  /// Only present if true.
+  /// Empty scopes are retained in the scope chain because
+  /// they can be targeted via `evaluateOnCallFrame` (using `scopeNumber`) or
+  /// matched against scopes in source maps.
+  final bool? empty;
+
   Scope({
     required this.type,
     required this.object,
     this.name,
     this.startLocation,
     this.endLocation,
+    this.empty,
   });
 
   factory Scope.fromJson(Map<String, dynamic> json) {
@@ -1224,6 +1227,7 @@ class Scope {
       endLocation: json.containsKey('endLocation')
           ? Location.fromJson(json['endLocation'] as Map<String, dynamic>)
           : null,
+      empty: json.containsKey('empty') ? json['empty'] as bool : null,
     );
   }
 
@@ -1234,6 +1238,7 @@ class Scope {
       if (name != null) 'name': name,
       if (startLocation != null) 'startLocation': startLocation!.toJson(),
       if (endLocation != null) 'endLocation': endLocation!.toJson(),
+      if (empty != null) 'empty': empty,
     };
   }
 }

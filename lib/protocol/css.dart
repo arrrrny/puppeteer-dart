@@ -79,8 +79,7 @@ class CSSApi {
       'styleSheetId': styleSheetId,
       'ruleText': ruleText,
       'location': location,
-      if (nodeForPropertySyntaxValidation != null)
-        'nodeForPropertySyntaxValidation': nodeForPropertySyntaxValidation,
+      'nodeForPropertySyntaxValidation': ?nodeForPropertySyntaxValidation,
     });
     return CSSRule.fromJson(result['rule'] as Map<String, dynamic>);
   }
@@ -107,7 +106,7 @@ class CSSApi {
   }) async {
     var result = await _client.send('CSS.createStyleSheet', {
       'frameId': frameId,
-      if (force != null) 'force': force,
+      'force': ?force,
     });
     return dom.StyleSheetId.fromJson(result['styleSheetId'] as String);
   }
@@ -194,9 +193,9 @@ class CSSApi {
     var result = await _client.send('CSS.resolveValues', {
       'values': [...values],
       'nodeId': nodeId,
-      if (propertyName != null) 'propertyName': propertyName,
-      if (pseudoType != null) 'pseudoType': pseudoType,
-      if (pseudoIdentifier != null) 'pseudoIdentifier': pseudoIdentifier,
+      'propertyName': ?propertyName,
+      'pseudoType': ?pseudoType,
+      'pseudoIdentifier': ?pseudoIdentifier,
     });
     return (result['results'] as List).map((e) => e as String).toList();
   }
@@ -315,7 +314,7 @@ class CSSApi {
   /// Pass `undefined` to disable tracking.
   Future<void> trackComputedStyleUpdatesForNode({dom.NodeId? nodeId}) async {
     await _client.send('CSS.trackComputedStyleUpdatesForNode', {
-      if (nodeId != null) 'nodeId': nodeId,
+      'nodeId': ?nodeId,
     });
   }
 
@@ -403,13 +402,31 @@ class CSSApi {
   }
 
   /// Modifies the expression of a container query.
+  /// Deprecated. Use setContainerQueryConditionText instead.
   /// Returns: The resulting CSS container query rule after modification.
+  @Deprecated('Use setContainerQueryConditionText instead')
   Future<CSSContainerQuery> setContainerQueryText(
     dom.StyleSheetId styleSheetId,
     SourceRange range,
     String text,
   ) async {
     var result = await _client.send('CSS.setContainerQueryText', {
+      'styleSheetId': styleSheetId,
+      'range': range,
+      'text': text,
+    });
+    return CSSContainerQuery.fromJson(
+      result['containerQuery'] as Map<String, dynamic>,
+    );
+  }
+
+  /// Returns: The resulting CSS container query rule after modification.
+  Future<CSSContainerQuery> setContainerQueryConditionText(
+    dom.StyleSheetId styleSheetId,
+    SourceRange range,
+    String text,
+  ) async {
+    var result = await _client.send('CSS.setContainerQueryConditionText', {
       'styleSheetId': styleSheetId,
       'range': range,
       'text': text,
@@ -505,8 +522,7 @@ class CSSApi {
   }) async {
     var result = await _client.send('CSS.setStyleTexts', {
       'edits': [...edits],
-      if (nodeForPropertySyntaxValidation != null)
-        'nodeForPropertySyntaxValidation': nodeForPropertySyntaxValidation,
+      'nodeForPropertySyntaxValidation': ?nodeForPropertySyntaxValidation,
     });
     return (result['styles'] as List)
         .map((e) => CSSStyle.fromJson(e as Map<String, dynamic>))
@@ -1060,6 +1076,41 @@ class Value {
   }
 }
 
+/// Contribution of an individual simple selector to specificity.
+class SpecificityComponent {
+  /// The simple selector text that contributes to specificity.
+  final String text;
+
+  /// The a component contribution.
+  final int a;
+
+  /// The b component contribution.
+  final int b;
+
+  /// The c component contribution.
+  final int c;
+
+  SpecificityComponent({
+    required this.text,
+    required this.a,
+    required this.b,
+    required this.c,
+  });
+
+  factory SpecificityComponent.fromJson(Map<String, dynamic> json) {
+    return SpecificityComponent(
+      text: json['text'] as String,
+      a: json['a'] as int,
+      b: json['b'] as int,
+      c: json['c'] as int,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {'text': text, 'a': a, 'b': b, 'c': c};
+  }
+}
+
 /// Specificity:
 /// https://drafts.csswg.org/selectors/#specificity-rules
 class Specificity {
@@ -1073,18 +1124,40 @@ class Specificity {
   /// The c component, which represents the number of type selectors and pseudo-elements.
   final int c;
 
-  Specificity({required this.a, required this.b, required this.c});
+  /// Per-simple-selector contributions used to explain this specificity.
+  final List<SpecificityComponent>? components;
+
+  Specificity({
+    required this.a,
+    required this.b,
+    required this.c,
+    this.components,
+  });
 
   factory Specificity.fromJson(Map<String, dynamic> json) {
     return Specificity(
       a: json['a'] as int,
       b: json['b'] as int,
       c: json['c'] as int,
+      components: json.containsKey('components')
+          ? (json['components'] as List)
+                .map(
+                  (e) =>
+                      SpecificityComponent.fromJson(e as Map<String, dynamic>),
+                )
+                .toList()
+          : null,
     );
   }
 
   Map<String, dynamic> toJson() {
-    return {'a': a, 'b': b, 'c': c};
+    return {
+      'a': a,
+      'b': b,
+      'c': c,
+      if (components != null)
+        'components': components!.map((e) => e.toJson()).toList(),
+    };
   }
 }
 
@@ -1891,9 +1964,6 @@ class MediaQueryExpression {
 
 /// CSS container query rule descriptor.
 class CSSContainerQuery {
-  /// Container query text.
-  final String text;
-
   /// The associated rule header range in the enclosing stylesheet (if
   /// available).
   final SourceRange? range;
@@ -1916,8 +1986,10 @@ class CSSContainerQuery {
   /// true if the query contains anchored() queries.
   final bool? queriesAnchored;
 
+  /// CSSContainerRule.conditionText
+  final String conditionText;
+
   CSSContainerQuery({
-    required this.text,
     this.range,
     this.styleSheetId,
     this.name,
@@ -1925,11 +1997,11 @@ class CSSContainerQuery {
     this.logicalAxes,
     this.queriesScrollState,
     this.queriesAnchored,
+    required this.conditionText,
   });
 
   factory CSSContainerQuery.fromJson(Map<String, dynamic> json) {
     return CSSContainerQuery(
-      text: json['text'] as String,
       range: json.containsKey('range')
           ? SourceRange.fromJson(json['range'] as Map<String, dynamic>)
           : null,
@@ -1949,12 +2021,13 @@ class CSSContainerQuery {
       queriesAnchored: json.containsKey('queriesAnchored')
           ? json['queriesAnchored'] as bool
           : null,
+      conditionText: json['conditionText'] as String,
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
-      'text': text,
+      'conditionText': conditionText,
       if (range != null) 'range': range!.toJson(),
       if (styleSheetId != null) 'styleSheetId': styleSheetId!.toJson(),
       if (name != null) 'name': name,
@@ -2573,7 +2646,8 @@ class CSSAtRule {
 enum CSSAtRuleType {
   fontFace('font-face'),
   fontFeatureValues('font-feature-values'),
-  fontPaletteValues('font-palette-values');
+  fontPaletteValues('font-palette-values'),
+  counterStyle('counter-style');
 
   final String value;
 

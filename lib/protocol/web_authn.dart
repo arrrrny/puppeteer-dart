@@ -38,9 +38,7 @@ class WebAuthnApi {
   /// Supported at the embedder's discretion if UI is available.
   /// Defaults to false.
   Future<void> enable({bool? enableUI}) async {
-    await _client.send('WebAuthn.enable', {
-      if (enableUI != null) 'enableUI': enableUI,
-    });
+    await _client.send('WebAuthn.enable', {'enableUI': ?enableUI});
   }
 
   /// Disable the WebAuthn domain.
@@ -73,9 +71,9 @@ class WebAuthnApi {
   }) async {
     await _client.send('WebAuthn.setResponseOverrideBits', {
       'authenticatorId': authenticatorId,
-      if (isBogusSignature != null) 'isBogusSignature': isBogusSignature,
-      if (isBadUV != null) 'isBadUV': isBadUV,
-      if (isBadUP != null) 'isBadUP': isBadUP,
+      'isBogusSignature': ?isBogusSignature,
+      'isBadUV': ?isBadUV,
+      'isBadUP': ?isBadUP,
     });
   }
 
@@ -168,17 +166,27 @@ class WebAuthnApi {
 
   /// Allows setting credential properties.
   /// https://w3c.github.io/webauthn/#sctn-automation-set-credential-properties
+  /// [signCount] Must be equal to or greater than -1.
+  /// If -1, the signature counter is removed from the credential, and every
+  /// assertion operation will report a value of 0.
+  /// See https://w3c.github.io/webauthn/#signature-counter
   Future<void> setCredentialProperties(
     AuthenticatorId authenticatorId,
     String credentialId, {
     bool? backupEligibility,
     bool? backupState,
+    int? activeCmtgKeyIndex,
+    bool? generateCmtgKeyOnNextOperation,
+    num? signCount,
   }) async {
     await _client.send('WebAuthn.setCredentialProperties', {
       'authenticatorId': authenticatorId,
       'credentialId': credentialId,
-      if (backupEligibility != null) 'backupEligibility': backupEligibility,
-      if (backupState != null) 'backupState': backupState,
+      'backupEligibility': ?backupEligibility,
+      'backupState': ?backupState,
+      'activeCmtgKeyIndex': ?activeCmtgKeyIndex,
+      'generateCmtgKeyOnNextOperation': ?generateCmtgKeyOnNextOperation,
+      'signCount': ?signCount,
     });
   }
 }
@@ -310,11 +318,14 @@ enum Ctap2Version {
   String toString() => value.toString();
 }
 
+/// LINT.IfChange(AuthenticatorTransport)
 enum AuthenticatorTransport {
   usb('usb'),
   nfc('nfc'),
   ble('ble'),
   cable('cable'),
+  hybrid('hybrid'),
+  smartCard('smart-card'),
   internal('internal');
 
   final String value;
@@ -374,6 +385,12 @@ class VirtualAuthenticatorOptions {
   /// Defaults to false.
   final bool? hasHmacSecretMc;
 
+  /// If set to true, the authenticator will support the cmtgKey (Credential
+  /// Manager Trust Group Key) extension.
+  /// https://github.com/w3c/webauthn/pull/2377
+  /// Defaults to false.
+  final bool? hasCmtgKey;
+
   /// If set to true, tests of user presence will succeed immediately.
   /// Otherwise, they will not be resolved. Defaults to true.
   final bool? automaticPresenceSimulation;
@@ -404,6 +421,7 @@ class VirtualAuthenticatorOptions {
     this.hasPrf,
     this.hasHmacSecret,
     this.hasHmacSecretMc,
+    this.hasCmtgKey,
     this.automaticPresenceSimulation,
     this.isUserVerified,
     this.defaultBackupEligibility,
@@ -439,6 +457,9 @@ class VirtualAuthenticatorOptions {
       hasHmacSecretMc: json.containsKey('hasHmacSecretMc')
           ? json['hasHmacSecretMc'] as bool
           : null,
+      hasCmtgKey: json.containsKey('hasCmtgKey')
+          ? json['hasCmtgKey'] as bool
+          : null,
       automaticPresenceSimulation:
           json.containsKey('automaticPresenceSimulation')
           ? json['automaticPresenceSimulation'] as bool
@@ -469,6 +490,7 @@ class VirtualAuthenticatorOptions {
       if (hasPrf != null) 'hasPrf': hasPrf,
       if (hasHmacSecret != null) 'hasHmacSecret': hasHmacSecret,
       if (hasHmacSecretMc != null) 'hasHmacSecretMc': hasHmacSecretMc,
+      if (hasCmtgKey != null) 'hasCmtgKey': hasCmtgKey,
       if (automaticPresenceSimulation != null)
         'automaticPresenceSimulation': automaticPresenceSimulation,
       if (isUserVerified != null) 'isUserVerified': isUserVerified,
@@ -495,10 +517,11 @@ class Credential {
   /// credential to a specific user.
   final String? userHandle;
 
-  /// Signature counter. This is incremented by one for each successful
-  /// assertion.
+  /// Signature counter. Must be equal to or greater than -1.
+  /// If -1, the credential won't have an associated signature counter, and
+  /// every assertion operation will report a value of 0.
   /// See https://w3c.github.io/webauthn/#signature-counter
-  final int signCount;
+  final num signCount;
 
   /// The large blob associated with the credential.
   /// See https://w3c.github.io/webauthn/#sctn-large-blob-extension
@@ -523,6 +546,15 @@ class Credential {
   /// https://w3c.github.io/webauthn/#dom-publickeycredentialuserentity-displayname
   final String? userDisplayName;
 
+  /// The CMTG keys associated with the credential.
+  final List<String>? cmtgKeys;
+
+  /// The 0-based index of the active key in cmtgKeys.
+  final int? activeCmtgKeyIndex;
+
+  /// If true, the authenticator will generate a new CMTG key on the next operation.
+  final bool? generateCmtgKeyOnNextOperation;
+
   Credential({
     required this.credentialId,
     required this.isResidentCredential,
@@ -535,6 +567,9 @@ class Credential {
     this.backupState,
     this.userName,
     this.userDisplayName,
+    this.cmtgKeys,
+    this.activeCmtgKeyIndex,
+    this.generateCmtgKeyOnNextOperation,
   });
 
   factory Credential.fromJson(Map<String, dynamic> json) {
@@ -546,7 +581,7 @@ class Credential {
       userHandle: json.containsKey('userHandle')
           ? json['userHandle'] as String
           : null,
-      signCount: json['signCount'] as int,
+      signCount: json['signCount'] as num,
       largeBlob: json.containsKey('largeBlob')
           ? json['largeBlob'] as String
           : null,
@@ -561,6 +596,16 @@ class Credential {
           : null,
       userDisplayName: json.containsKey('userDisplayName')
           ? json['userDisplayName'] as String
+          : null,
+      cmtgKeys: json.containsKey('cmtgKeys')
+          ? (json['cmtgKeys'] as List).map((e) => e as String).toList()
+          : null,
+      activeCmtgKeyIndex: json.containsKey('activeCmtgKeyIndex')
+          ? json['activeCmtgKeyIndex'] as int
+          : null,
+      generateCmtgKeyOnNextOperation:
+          json.containsKey('generateCmtgKeyOnNextOperation')
+          ? json['generateCmtgKeyOnNextOperation'] as bool
           : null,
     );
   }
@@ -578,6 +623,10 @@ class Credential {
       if (backupState != null) 'backupState': backupState,
       if (userName != null) 'userName': userName,
       if (userDisplayName != null) 'userDisplayName': userDisplayName,
+      if (cmtgKeys != null) 'cmtgKeys': [...?cmtgKeys],
+      if (activeCmtgKeyIndex != null) 'activeCmtgKeyIndex': activeCmtgKeyIndex,
+      if (generateCmtgKeyOnNextOperation != null)
+        'generateCmtgKeyOnNextOperation': generateCmtgKeyOnNextOperation,
     };
   }
 }

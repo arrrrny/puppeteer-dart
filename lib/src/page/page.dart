@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:async/async.dart';
@@ -16,6 +15,7 @@ import '../../protocol/runtime.dart';
 import '../../protocol/target.dart';
 import '../browser.dart';
 import '../connection.dart';
+import '../io/io.dart';
 import '../target.dart';
 import '../utils/take_until.dart';
 import 'accessibility.dart';
@@ -29,6 +29,7 @@ import 'helper.dart';
 import 'js_handle.dart';
 import 'keyboard.dart';
 import 'lifecycle_watcher.dart';
+import 'locator.dart';
 import 'metrics.dart';
 import 'mouse.dart';
 import 'network_manager.dart';
@@ -419,6 +420,31 @@ class Page {
   Touchscreen get touchscreen => _touchscreen;
 
   Mouse get mouse => _mouse;
+
+  /// Creates a [Locator] for the provided [selector].
+  ///
+  /// A locator auto-waits for the element to be present, visible and actionable
+  /// and retries the whole action if it fails. See [Locator] for details.
+  ///
+  /// ```dart
+  /// await page.locator('button').click();
+  /// ```
+  Locator locator(String selector) =>
+      NodeLocator.create(this, mainFrame, selector);
+
+  /// Creates a [Locator] for the provided JavaScript [pageFunction].
+  ///
+  /// The function is evaluated in the page repeatedly until it returns a truthy
+  /// value; the locator then resolves to a handle for that value. The function
+  /// may be asynchronous (return a `Promise`).
+  ///
+  /// ```dart
+  /// var ready = await page
+  ///     .locatorFunction('() => document.querySelector(".ready")')
+  ///     .waitHandle();
+  /// ```
+  Locator locatorFunction(@Language('js') String pageFunction) =>
+      FunctionLocator.create(this, mainFrame, pageFunction);
 
   bool get isDragInterceptionEnabled => _userDragInterceptionEnabled;
 
@@ -999,12 +1025,19 @@ function addPageBinding(bindingName) {
   }
 
   void _handleException(ExceptionThrownEvent event) {
+    if (_onErrorController.isClosed) return;
     _onErrorController.add(ClientError(event.exceptionDetails));
   }
 
   void _handleTargetCrashed(void _) {
+    // A renderer crash does not destroy the page target (Chrome shows a "sad
+    // tab" and the page can recover on the next navigation). Match upstream
+    // Puppeteer and only surface the error here — do NOT dispose the page.
+    // Disposing on crash used to race the error delivery against closing
+    // `_onErrorController`, which intermittently turned `page.onError.first`
+    // into a "No element" / timeout failure.
+    if (_onErrorController.isClosed) return;
     _onErrorController.add(ClientError.pageCrashed());
-    Future(() => _dispose('Target crashed'));
   }
 
   Future<void> _onBindingCalled(BindingCalledEvent event) async {

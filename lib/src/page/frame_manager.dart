@@ -1,13 +1,14 @@
 import 'dart:async';
-import 'dart:io';
 import '../../protocol/network.dart';
 import '../../protocol/page.dart';
 import '../../protocol/runtime.dart';
 import '../connection.dart';
+import '../io/io.dart';
 import 'dom_world.dart';
 import 'execution_context.dart';
 import 'js_handle.dart';
 import 'lifecycle_watcher.dart';
+import 'locator.dart';
 import 'mouse.dart';
 import 'network_manager.dart';
 import 'page.dart';
@@ -121,14 +122,15 @@ class FrameManager {
       return null;
     }
 
+    Object? error;
     try {
-      var error = await Future.any([navigate(), watcher.timeoutOrTermination]);
-
-      if (error != null) {
-        return Future.error(error);
-      }
+      error = await Future.any([navigate(), watcher.timeoutOrTermination]);
     } finally {
       watcher.dispose();
+    }
+
+    if (error != null) {
+      return Future.error(error);
     }
 
     return watcher.navigationResponse ??
@@ -146,18 +148,19 @@ class FrameManager {
       wait: wait,
       timeout: timeout ?? page.navigationTimeoutOrDefault,
     );
+    Exception? error;
     try {
-      var error = await Future.any([
+      error = await Future.any([
         watcher.timeoutOrTermination,
         watcher.sameDocumentNavigation,
         watcher.newDocumentNavigation,
       ]);
-
-      if (error != null) {
-        return Future.error(error);
-      }
     } finally {
       watcher.dispose();
+    }
+
+    if (error != null) {
+      return Future.error(error);
     }
 
     return watcher.navigationResponse ??
@@ -504,6 +507,17 @@ class Frame {
   Future<ExecutionContext> get executionContext {
     return _mainWorld.executionContext;
   }
+
+  /// Creates a [Locator] for the provided [selector], scoped to this frame.
+  ///
+  /// See [Locator] and [Page.locator] for details.
+  Locator locator(String selector) =>
+      NodeLocator.create(frameManager.page, this, selector);
+
+  /// Creates a [Locator] for the provided JavaScript [pageFunction], scoped to
+  /// this frame. See [Page.locatorFunction] for details.
+  Locator locatorFunction(@Language('js') String pageFunction) =>
+      FunctionLocator.create(frameManager.page, this, pageFunction);
 
   /// The only difference between [Frame.evaluate] and [Frame.evaluateHandle] is
   /// that [Frame.evaluateHandle] returns in-page object (JSHandle).

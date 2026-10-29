@@ -1,0 +1,24 @@
+name: Pana
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  pana:
+    name: Check pana score
+    runs-on: ubuntu-latest
+    steps:
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 'stable'
+      - uses: actions/checkout@v4
+      # pub.dev analyses the published package against the newest resolvable
+      # versions, ignoring pubspec.lock. Upgrade so this check sees what the
+      # published score will see — e.g. a lint newly added to
+      # package:lints/recommended.yaml.
+      - run: dart pub upgrade
+      - run: dart pub global activate pana
+      - run: dart tool/check_pana.dart

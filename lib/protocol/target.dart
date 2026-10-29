@@ -74,7 +74,7 @@ class TargetApi {
   Future<SessionID> attachToTarget(TargetID targetId, {bool? flatten}) async {
     var result = await _client.send('Target.attachToTarget', {
       'targetId': targetId,
-      if (flatten != null) 'flatten': flatten,
+      'flatten': ?flatten,
     });
     return SessionID.fromJson(result['sessionId'] as String);
   }
@@ -112,8 +112,8 @@ class TargetApi {
   }) async {
     await _client.send('Target.exposeDevToolsProtocol', {
       'targetId': targetId,
-      if (bindingName != null) 'bindingName': bindingName,
-      if (inheritPermissions != null) 'inheritPermissions': inheritPermissions,
+      'bindingName': ?bindingName,
+      'inheritPermissions': ?inheritPermissions,
     });
   }
 
@@ -132,9 +132,9 @@ class TargetApi {
     List<String>? originsWithUniversalNetworkAccess,
   }) async {
     var result = await _client.send('Target.createBrowserContext', {
-      if (disposeOnDetach != null) 'disposeOnDetach': disposeOnDetach,
-      if (proxyServer != null) 'proxyServer': proxyServer,
-      if (proxyBypassList != null) 'proxyBypassList': proxyBypassList,
+      'disposeOnDetach': ?disposeOnDetach,
+      'proxyServer': ?proxyServer,
+      'proxyBypassList': ?proxyBypassList,
       if (originsWithUniversalNetworkAccess != null)
         'originsWithUniversalNetworkAccess': [
           ...originsWithUniversalNetworkAccess,
@@ -169,13 +169,11 @@ class TargetApi {
   /// [hidden] Whether to create a hidden target. The hidden target is observable via protocol, but not
   /// present in the tab UI strip. Cannot be created with `forTab: true`, `newWindow: true` or
   /// `background: false`. The life-time of the tab is limited to the life-time of the session.
-  /// [focus] If specified, the option is used to determine if the new target should
-  /// be focused or not. By default, the focus behavior depends on the
-  /// value of the background field. For example, background=false and focus=false
-  /// will result in the target tab being opened but the browser window remain
-  /// unchanged (if it was in the background, it will remain in the background)
-  /// and background=false with focus=undefined will result in the window being focused.
-  /// Using background: true and focus: true is not supported and will result in an error.
+  /// [focus] If specified, determines whether the new target should be focused.
+  /// By default, the focus behavior depends on the `background` parameter:
+  /// - If `background` is false (default) and `focus` is omitted, the new target is focused and the browser window is brought to the foreground.
+  /// - If `background` is false and `focus` is false, the target is opened but the browser window's focus remains unchanged (e.g., if the window was in the background, it stays there).
+  /// - If `background` is true, setting `focus` to true is not supported and will result in an error.
   /// Returns: The id of the page opened.
   Future<TargetID> createTarget(
     String url, {
@@ -194,19 +192,18 @@ class TargetApi {
   }) async {
     var result = await _client.send('Target.createTarget', {
       'url': url,
-      if (left != null) 'left': left,
-      if (top != null) 'top': top,
-      if (width != null) 'width': width,
-      if (height != null) 'height': height,
-      if (windowState != null) 'windowState': windowState,
-      if (browserContextId != null) 'browserContextId': browserContextId,
-      if (enableBeginFrameControl != null)
-        'enableBeginFrameControl': enableBeginFrameControl,
-      if (newWindow != null) 'newWindow': newWindow,
-      if (background != null) 'background': background,
-      if (forTab != null) 'forTab': forTab,
-      if (hidden != null) 'hidden': hidden,
-      if (focus != null) 'focus': focus,
+      'left': ?left,
+      'top': ?top,
+      'width': ?width,
+      'height': ?height,
+      'windowState': ?windowState,
+      'browserContextId': ?browserContextId,
+      'enableBeginFrameControl': ?enableBeginFrameControl,
+      'newWindow': ?newWindow,
+      'background': ?background,
+      'forTab': ?forTab,
+      'hidden': ?hidden,
+      'focus': ?focus,
     });
     return TargetID.fromJson(result['targetId'] as String);
   }
@@ -218,8 +215,8 @@ class TargetApi {
     @Deprecated('This parameter is deprecated') TargetID? targetId,
   }) async {
     await _client.send('Target.detachFromTarget', {
-      if (sessionId != null) 'sessionId': sessionId,
-      if (targetId != null) 'targetId': targetId,
+      'sessionId': ?sessionId,
+      'targetId': ?targetId,
     });
   }
 
@@ -236,7 +233,7 @@ class TargetApi {
   /// Returns information about a target.
   Future<TargetInfo> getTargetInfo({TargetID? targetId}) async {
     var result = await _client.send('Target.getTargetInfo', {
-      if (targetId != null) 'targetId': targetId,
+      'targetId': ?targetId,
     });
     return TargetInfo.fromJson(result['targetInfo'] as Map<String, dynamic>);
   }
@@ -247,9 +244,7 @@ class TargetApi {
   /// is used for consistency.
   /// Returns: The list of targets.
   Future<List<TargetInfo>> getTargets({TargetFilter? filter}) async {
-    var result = await _client.send('Target.getTargets', {
-      if (filter != null) 'filter': filter,
-    });
+    var result = await _client.send('Target.getTargets', {'filter': ?filter});
     return (result['targetInfos'] as List)
         .map((e) => TargetInfo.fromJson(e as Map<String, dynamic>))
         .toList();
@@ -267,8 +262,8 @@ class TargetApi {
   }) async {
     await _client.send('Target.sendMessageToTarget', {
       'message': message,
-      if (sessionId != null) 'sessionId': sessionId,
-      if (targetId != null) 'targetId': targetId,
+      'sessionId': ?sessionId,
+      'targetId': ?targetId,
     });
   }
 
@@ -296,8 +291,8 @@ class TargetApi {
     await _client.send('Target.setAutoAttach', {
       'autoAttach': autoAttach,
       'waitForDebuggerOnStart': waitForDebuggerOnStart,
-      if (flatten != null) 'flatten': flatten,
-      if (filter != null) 'filter': filter,
+      'flatten': ?flatten,
+      'filter': ?filter,
     });
   }
 
@@ -317,7 +312,7 @@ class TargetApi {
     await _client.send('Target.autoAttachRelated', {
       'targetId': targetId,
       'waitForDebuggerOnStart': waitForDebuggerOnStart,
-      if (filter != null) 'filter': filter,
+      'filter': ?filter,
     });
   }
 
@@ -329,7 +324,7 @@ class TargetApi {
   Future<void> setDiscoverTargets(bool discover, {TargetFilter? filter}) async {
     await _client.send('Target.setDiscoverTargets', {
       'discover': discover,
-      if (filter != null) 'filter': filter,
+      'filter': ?filter,
     });
   }
 
@@ -356,13 +351,13 @@ class TargetApi {
   /// Opens a DevTools window for the target.
   /// [targetId] This can be the page or tab target ID.
   /// [panelId] The id of the panel we want DevTools to open initially. Currently
-  /// supported panels are elements, console, network, sources, resources
-  /// and performance.
+  /// supported panels are elements, console, network, sources, resources,
+  /// timeline, chrome-recorder, heap-profiler, lighthouse, and security.
   /// Returns: The targetId of DevTools page target.
   Future<TargetID> openDevTools(TargetID targetId, {String? panelId}) async {
     var result = await _client.send('Target.openDevTools', {
       'targetId': targetId,
-      if (panelId != null) 'panelId': panelId,
+      'panelId': ?panelId,
     });
     return TargetID.fromJson(result['targetId'] as String);
   }
@@ -523,6 +518,10 @@ class TargetInfo {
   /// the type of "page", this may be set to "prerender".
   final String? subtype;
 
+  /// Embedder-specific target metadata. This is only set for targets of
+  /// type "tab".
+  final Map<String, dynamic>? embedderData;
+
   TargetInfo({
     required this.targetId,
     required this.type,
@@ -536,6 +535,7 @@ class TargetInfo {
     this.parentFrameId,
     this.browserContextId,
     this.subtype,
+    this.embedderData,
   });
 
   factory TargetInfo.fromJson(Map<String, dynamic> json) {
@@ -564,6 +564,9 @@ class TargetInfo {
             )
           : null,
       subtype: json.containsKey('subtype') ? json['subtype'] as String : null,
+      embedderData: json.containsKey('embedderData')
+          ? json['embedderData'] as Map<String, dynamic>
+          : null,
     );
   }
 
@@ -582,6 +585,7 @@ class TargetInfo {
       if (browserContextId != null)
         'browserContextId': browserContextId!.toJson(),
       if (subtype != null) 'subtype': subtype,
+      if (embedderData != null) 'embedderData': embedderData,
     };
   }
 }

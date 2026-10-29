@@ -60,8 +60,8 @@ class TracingApi {
     MemoryDumpLevelOfDetail? levelOfDetail,
   }) async {
     var result = await _client.send('Tracing.requestMemoryDump', {
-      if (deterministic != null) 'deterministic': deterministic,
-      if (levelOfDetail != null) 'levelOfDetail': levelOfDetail,
+      'deterministic': ?deterministic,
+      'levelOfDetail': ?levelOfDetail,
     });
     return RequestMemoryDumpResult.fromJson(result);
   }
@@ -78,6 +78,15 @@ class TracingApi {
   /// When specified, the parameters `categories`, `options`, `traceConfig`
   /// are ignored.
   /// [tracingBackend] Backend type (defaults to `auto`)
+  /// [screenshotMaxSize] Maximum width and height (in pixels) of each captured screenshot.
+  /// Only used when the `disabled-by-default-devtools.screenshot` category is
+  /// enabled. Defaults to 500. The combined memory footprint of screenshots
+  /// (`screenshotMaxSize` * `screenshotMaxSize` * 4 * `screenshotMaxCount`)
+  /// is clamped to the existing per-session budget.
+  /// [screenshotMaxCount] Maximum number of screenshots captured during a single tracing session.
+  /// Only used when the `disabled-by-default-devtools.screenshot` category is
+  /// enabled. Defaults to 450. Clamped together with `screenshotMaxSize` to
+  /// stay within the per-session screenshot memory budget.
   Future<void> start({
     @Deprecated('This parameter is deprecated') String? categories,
     @Deprecated('This parameter is deprecated') String? options,
@@ -88,22 +97,25 @@ class TracingApi {
     TraceConfig? traceConfig,
     String? perfettoConfig,
     TracingBackend? tracingBackend,
+    int? screenshotMaxSize,
+    int? screenshotMaxCount,
   }) async {
     assert(
       transferMode == null ||
           const ['ReportEvents', 'ReturnAsStream'].contains(transferMode),
     );
     await _client.send('Tracing.start', {
-      if (categories != null) 'categories': categories,
-      if (options != null) 'options': options,
-      if (bufferUsageReportingInterval != null)
-        'bufferUsageReportingInterval': bufferUsageReportingInterval,
-      if (transferMode != null) 'transferMode': transferMode,
-      if (streamFormat != null) 'streamFormat': streamFormat,
-      if (streamCompression != null) 'streamCompression': streamCompression,
-      if (traceConfig != null) 'traceConfig': traceConfig,
-      if (perfettoConfig != null) 'perfettoConfig': perfettoConfig,
-      if (tracingBackend != null) 'tracingBackend': tracingBackend,
+      'categories': ?categories,
+      'options': ?options,
+      'bufferUsageReportingInterval': ?bufferUsageReportingInterval,
+      'transferMode': ?transferMode,
+      'streamFormat': ?streamFormat,
+      'streamCompression': ?streamCompression,
+      'traceConfig': ?traceConfig,
+      'perfettoConfig': ?perfettoConfig,
+      'tracingBackend': ?tracingBackend,
+      'screenshotMaxSize': ?screenshotMaxSize,
+      'screenshotMaxCount': ?screenshotMaxCount,
     });
   }
 }
